@@ -1,3 +1,19 @@
+/*
+Go3Up (Go S3 Uploader) is a small S3 uploader tool.
+
+It was created in order to speed up S3 uploads by employing a little meta data caching about
+what was already uploaded. The tool can remember what files where uploaded (and their md5 sum)
+and on subsequent runs only upload the files that actually changed since the last run.
+
+The initial use case, was a large static site (with 10k+ files) that needed to change frequently
+only some of the files (about ~100 routinely). In that particular case, the time reduction by
+switching from s3cmd to go3up was quite significant.
+
+On uploads with empty cache there may not be any benefit.
+
+The current focus of the tool is just one way uploads (without deleting things that were removed
+locally, yet). That may (or not) change in the future.
+*/
 package main
 
 import (
@@ -19,7 +35,7 @@ import (
 // If you encounter this too often, reduce the number of workers.
 const RequestTimeoutError = "Your socket connection to the server was not read from or written to within the timeout period. Idle connections will be closed."
 
-// Various exit codes
+// Go3up exit codes
 const (
 	Success = iota
 	CachingFailed

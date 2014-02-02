@@ -4,3 +4,6 @@ go:
 script: "./test.sh"
 install:
   - go get code.google.com/p/go.tools/cmd/cover
+  - go get github.com/alexaandru/utils
+  - go get launchpad.net/goamz/aws
+  - go get launchpad.net/goamz/s3

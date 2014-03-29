@@ -107,8 +107,7 @@ func s3put(auth aws.Auth, bucket *s3.Bucket, fname string, opts *options) (err e
 	return
 }
 
-// filesLists returns both the current files list as well as the difference from the old
-// (cached) files list.
+// filesLists returns both the current files list as well as the difference from the old (cached) files list.
 func filesLists(opts *options) (current utils.FileHashes, diff []string) {
 	var old utils.FileHashes
 	current, old = utils.FileHashesNew(opts.source), utils.FileHashes{}
@@ -120,7 +119,7 @@ func filesLists(opts *options) (current utils.FileHashes, diff []string) {
 		os.Exit(Success)
 	} else {
 		display(opts.verbose,
-			fmt.Sprintf("List of changes ready, there are %d files to be uploaded to %s:\n", len(diff), opts.bucketName))
+			fmt.Sprintf("There are %d files to be uploaded to %s:\n", len(diff), opts.bucketName))
 	}
 
 	return
@@ -157,7 +156,6 @@ func performUpload(diff []string, opts *options) {
 				}
 			}
 		}()
-
 	}
 
 	for _, fname := range diff {
@@ -165,7 +163,7 @@ func performUpload(diff []string, opts *options) {
 	}
 }
 
-// upload handles the upload of changed files.
+// upload handles the upload work boilerplate. It defers actual uploads to performUpload()
 func upload(diff []string, opts *options) {
 	if opts.doUpload {
 		if !(opts.quiet || opts.verbose) {
@@ -209,20 +207,14 @@ func processCmdLineFlags() (opts *options) {
 	flag.BoolVar(&opts.doCache, "cache", true, "Do update the cache")
 
 	flag.Parse()
-	validateCmdLineFlags(opts)
+	flags := map[string]string{"Bucket Name": opts.bucketName, "Source": opts.source, "Cache file": opts.cacheFile}
+	validateCmdLineFlags(flags, opts)
 
 	return
 }
 
-// validateCmdLineFlags validates some of the flags, mostly paths.
-// Defers actual validation to validateCmdLineFlag()
-func validateCmdLineFlags(opts *options) (err error) {
-	flags := map[string]string{
-		"Bucket Name": opts.bucketName,
-		"Source":      opts.source,
-		"Cache file":  opts.cacheFile,
-	}
-
+// validateCmdLineFlags validates some of the flags, mostly paths. Defers actual validation to validateCmdLineFlag()
+func validateCmdLineFlags(flags map[string]string, opts *options) (err error) {
 	for label, val := range flags {
 		if err = validateCmdLineFlag(label, val); err != nil {
 			fmt.Printf("%s should be set. Please use 'go3up -h' for help.\n", label)
@@ -259,7 +251,7 @@ func betterMime(fname string) (mt string) {
 	return
 }
 
-// TODO: On unrecoverable error, still cache the ones successfully uploaded.
+// TODO: On unrecoverable error, it should still cache the successfull uploads.
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	opts := processCmdLineFlags()

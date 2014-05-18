@@ -17,13 +17,15 @@ locally, yet). That may (or not) change in the future.
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/alexaandru/utils"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 	"io/ioutil"
-	"launchpad.net/goamz/aws"
-	"launchpad.net/goamz/s3"
 	"mime"
 	"os"
 	"path/filepath"
@@ -37,7 +39,7 @@ type options struct {
 	workersCount int
 	bucketName, source,
 	cacheFile string
-	dryRun, verbose, quiet, doCache, doUpload bool
+	dryRun, verbose, quiet, doCache, doUpload, gzipHTML bool
 }
 
 // Exit codes.
@@ -56,6 +58,7 @@ var recoverableErrorsSuffixes = []string{
 	"Idle connections will be closed.",
 	"EOF",
 	"broken pipe",
+	"no such host",
 }
 
 // recoverable verifies if the error given is in recoverableErrorsSuffixes list.
@@ -88,7 +91,17 @@ func display(cond bool, s1 string, rest ...string) {
 func s3put(auth aws.Auth, bucket *s3.Bucket, fname string, opts *options) (err error) {
 	fullName := filepath.Join(opts.source, fname)
 	if data, err := ioutil.ReadFile(fullName); err == nil {
-		if err = bucket.Put(fname, data, betterMime(fname), s3.PublicRead); err != nil {
+		var buf bytes.Buffer
+		headers := map[string]([]string){"Content-Type": {betterMime(fname)}}
+		if (strings.HasSuffix(fullName, ".html") || strings.HasSuffix(fullName, ".css") || strings.HasSuffix(fullName, ".js")) && opts.gzipHTML {
+			w := gzip.NewWriter(&buf)
+			w.Write(data)
+			w.Close()
+			headers["Content-Encoding"] = []string{"gzip"}
+		} else {
+			buf = *bytes.NewBuffer(data)
+		}
+		if err = bucket.PutHeader(fname, buf.Bytes(), headers, s3.PublicRead); err != nil {
 			if recoverable(err) { // FIXME: Implement exponential backoff.
 				display(opts.verbose || opts.quiet, "Warn: upload failed, retrying: "+fname, "r")
 				bucket = s3.New(auth, aws.EUWest).Bucket(opts.bucketName)
@@ -205,6 +218,7 @@ func processCmdLineFlags() (opts *options) {
 	flag.BoolVar(&opts.quiet, "quiet", false, "Print only warnings and errors")
 	flag.BoolVar(&opts.doUpload, "upload", true, "Do perform an upload")
 	flag.BoolVar(&opts.doCache, "cache", true, "Do update the cache")
+	flag.BoolVar(&opts.gzipHTML, "gzip", true, "Gzip HTML files")
 
 	flag.Parse()
 	flags := map[string]string{"Bucket Name": opts.bucketName, "Source": opts.source, "Cache file": opts.cacheFile}

@@ -1,9 +1,9 @@
 /*
 Go3Up (Go S3 Uploader) is a small S3 uploader tool.
 
-It was created in order to speed up S3 uploads by employing a local caching of files md5 sums.
+It was created in order to speed up S3 uploads by employing a local caching of files' md5 sums.
 That way, on subsequent runs, go3up can compute a list of the files that changed since the
-last upload and limit the upload only to those.
+last upload and only upload those.
 
 The initial use case was a large static site (with 10k+ files) that frequently changed only
 a small subset of files (about ~100 routinely). In that particular case, the time reduction by
@@ -29,6 +29,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -42,6 +43,12 @@ type options struct {
 	dryRun, verbose, quiet, doCache, doUpload, gzipHTML bool
 }
 
+// pathToHeaders associates a given path pattern (regex) with one or more headers.
+type pathToHeaders struct {
+	pathPattern string
+	headers     map[string]string
+}
+
 // Exit codes.
 const (
 	Success = iota
@@ -51,6 +58,13 @@ const (
 	S3AuthError
 	FileReadFailed
 	CmdLineOptionError
+	BadHeaderDefinition
+)
+
+// Headers constants.
+const (
+	ContentEncoding = "Content-Encoding"
+	CacheControl    = "Cache-Control"
 )
 
 // S3 errors that we will retry.
@@ -59,10 +73,35 @@ var recoverableErrorsSuffixes = []string{
 	"EOF",
 	"broken pipe",
 	"no such host",
+	"transport closed before response was received",
+	"TLS handshake timeout",
 }
 
-// recoverable verifies if the error given is in recoverableErrorsSuffixes list.
-func recoverable(err error) bool {
+// Order matters: first hit, first served.
+var customHeadersDef = []pathToHeaders{
+	pathToHeaders{"index\\.html", map[string]string{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
+	pathToHeaders{"[^/]*\\.html$", map[string]string{ContentEncoding: "gzip", CacheControl: "max-age=3600"}},
+	pathToHeaders{"\\.html$", map[string]string{ContentEncoding: "gzip", CacheControl: "max-age=86400"}},
+	pathToHeaders{"\\.xml$", map[string]string{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
+	pathToHeaders{"\\.ico$", map[string]string{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
+	pathToHeaders{"\\.(js|css)$", map[string]string{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
+	pathToHeaders{"images/articole/.*(jpg|JPG|png|PNG)$", map[string]string{CacheControl: "max-age=31536000"}},
+	pathToHeaders{"\\.(jpg|JPG|png|PNG)$", map[string]string{CacheControl: "max-age=31536000"}},
+}
+
+// mustGzip returns true if the headers indicate that the content must be gzipped.
+func (ph *pathToHeaders) mustGzip() bool {
+	for hdrKey, hdrVal := range ph.headers {
+		if hdrKey == ContentEncoding && hdrVal == "gzip" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isRecoverable verifies if the error given is in recoverableErrorsSuffixes list.
+func isRecoverable(err error) bool {
 	for _, errSuffix := range recoverableErrorsSuffixes {
 		if strings.HasSuffix(err.Error(), errSuffix) {
 			return true
@@ -87,23 +126,53 @@ func display(cond bool, s1 string, rest ...string) {
 	}
 }
 
+// customHeaders verifies if we have custom headers matching the given fname and returns them if found.
+func customHeaders(fname string) (headers map[string]string, ok, mustGzip bool) {
+	var err error
+	for _, headersPat := range customHeadersDef {
+		ok, err = regexp.MatchString(headersPat.pathPattern, fname)
+		if err != nil {
+			quit("Failed to process headers for "+fname, err, BadHeaderDefinition)
+		} else if ok {
+			return headersPat.headers, true, headersPat.mustGzip()
+		}
+	}
+
+	return
+}
+
+// prepareBodyAndHeaders prepares the body (applying gzip encoding if needed) and the headers (adding any custom headers defined).
+func prepareBodyAndHeaders(data *[]byte, fname string) (buf *bytes.Buffer, headers map[string]([]string)) {
+	headers = map[string]([]string){"Content-Type": {betterMime(fname)}}
+
+	if custHeaders, ok, mustGzip := customHeaders(fname); ok {
+		for hdrKey, hdrVal := range custHeaders {
+			headers[hdrKey] = []string{hdrVal}
+		}
+
+		if mustGzip {
+			buf = &bytes.Buffer{}
+			w := gzip.NewWriter(buf)
+			w.Write(*data)
+			w.Close()
+		} else {
+			buf = bytes.NewBuffer(*data)
+		}
+	} else {
+		buf = bytes.NewBuffer(*data)
+	}
+
+	return
+}
+
 // s3put puts one file to S3 and tries to recover from some errors.
 func s3put(auth aws.Auth, bucket *s3.Bucket, fname string, opts *options) (err error) {
 	fullName := filepath.Join(opts.source, fname)
 	if data, err := ioutil.ReadFile(fullName); err == nil {
-		var buf bytes.Buffer
-		headers := map[string]([]string){"Content-Type": {betterMime(fname)}}
-		if (strings.HasSuffix(fullName, ".html") || strings.HasSuffix(fullName, ".css") || strings.HasSuffix(fullName, ".js")) && opts.gzipHTML {
-			w := gzip.NewWriter(&buf)
-			w.Write(data)
-			w.Close()
-			headers["Content-Encoding"] = []string{"gzip"}
-		} else {
-			buf = *bytes.NewBuffer(data)
-		}
+		buf, headers := prepareBodyAndHeaders(&data, fname)
 		if err = bucket.PutHeader(fname, buf.Bytes(), headers, s3.PublicRead); err != nil {
-			if recoverable(err) { // FIXME: Implement exponential backoff.
-				display(opts.verbose || opts.quiet, "Warn: upload failed, retrying: "+fname, "r")
+			if isRecoverable(err) { // FIXME: Implement exponential backoff.
+				display(opts.verbose || opts.quiet, "Warn: upload failed, retrying: "+fname)
 				bucket = s3.New(auth, aws.EUWest).Bucket(opts.bucketName)
 				return s3put(auth, bucket, fname, opts)
 			}

@@ -1,7 +1,7 @@
 language: go
 go:
-  - 1.2
-script: "./test.sh"
+  - 1.3.3
+script: make test
 install:
   - go get code.google.com/p/go.tools/cmd/cover
   - go get github.com/alexaandru/utils

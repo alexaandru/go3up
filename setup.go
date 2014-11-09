@@ -8,17 +8,24 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sync"
 )
 
 type options struct {
-	upload       uploader
 	workersCount int
 	bucketName, source,
 	cacheFile string
 	dryRun, verbose, quiet, doCache, doUpload, gzipHTML bool
 }
 
+type completedList struct {
+	list []string
+	sync.Mutex
+}
+
 var opts *options
+
+var appEnv string
 
 // Order matters: first hit, first served.
 // TODO: Make this configurable somehow, so that end users can provide their own mappings.
@@ -91,9 +98,15 @@ func validateCmdLineFlag(label, val string) (err error) {
 	return
 }
 
+func (cl *completedList) add(fname string) {
+	cl.Lock()
+	cl.list = append(cl.list, fname)
+	cl.Unlock()
+}
+
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	opts = new(options)
 	processCmdLineFlags(opts)
-	opts.upload = s3put
+	appEnv = "production"
 }

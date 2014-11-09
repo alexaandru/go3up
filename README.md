@@ -10,10 +10,7 @@ Go S3 Uploader
 TODO
 ----
 
- - implement exponential backoff as advised at: http://aws.amazon.com/articles/1904/;
  - implement (optional) MD5 verification (see Content-MD5 at http://docs.aws.amazon.com/AmazonS3/latest/API/RESTObjectPUT.html);
  - implement multipart uploads + non "slurp mode" file read (+ make the limit where multipart kicks in configurable);
  - implement deletion of remote files missing on local;
  - (maybe) implement config file (from curr dir/home);
- - (maybe) implement support for compression (http://www.http-compression.com/);
- - add tests.

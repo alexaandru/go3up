@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 // Headers
@@ -28,9 +29,12 @@ type pathToHeaders struct {
 }
 
 type sourceFile struct {
-	fname, fpath string
-	hdrs         headers
-	gzip         bool
+	fname,
+	fpath string
+	hdrs     headers
+	gzip     bool
+	attempts int
+	sync.Mutex
 }
 
 func (h *headers) merge(other headersDef) {
@@ -68,20 +72,29 @@ func newSourceFile(fname string) (sf *sourceFile) {
 	return
 }
 
-func (s sourceFile) body() []byte {
-	data, err := ioutil.ReadFile(s.fpath)
+func (s *sourceFile) body() (data []byte, err error) {
+	data, err = ioutil.ReadFile(s.fpath)
 	if err != nil {
-		// FIXME: We need a better way to handle this error than quitting on the spot.
-		quit("Read error:", err, FileReadFailed)
+		return
 	}
 
 	if s.gzip {
 		buf := &bytes.Buffer{}
 		w := gzip.NewWriter(buf)
 		w.Write(data)
-		w.Close()
-		return buf.Bytes()
+		err = w.Close()
+		return buf.Bytes(), err
 	}
 
-	return data
+	return
+}
+
+func (s *sourceFile) recordAttempt() {
+	s.Lock()
+	s.attempts++
+	s.Unlock()
+}
+
+func (s *sourceFile) retriable() bool {
+	return s.attempts < maxTries
 }

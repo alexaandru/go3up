@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"mime"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -38,8 +36,11 @@ func isRecoverable(err error) (yes bool) {
 func msg(msgs ...string) string {
 	if opts.verbose && len(msgs) > 0 {
 		return msgs[0] + "\n"
-	} else if opts.quiet && len(msgs) > 2 {
-		return msgs[2]
+	} else if opts.quiet {
+		if len(msgs) > 2 {
+			return msgs[2]
+		}
+		return ""
 	} else if len(msgs) > 1 {
 		return msgs[1]
 	} else if len(msgs) > 0 {
@@ -47,12 +48,6 @@ func msg(msgs ...string) string {
 	}
 
 	return "Error, no message available"
-}
-
-// quit aborts the program with exitCode, after it prints the error message.
-func quit(msg string, err error, exitCode int) {
-	fmt.Println(msg, err)
-	os.Exit(exitCode)
 }
 
 // betterMime wrapps mime.TypeByExtension and tries to handle a few edge cases.

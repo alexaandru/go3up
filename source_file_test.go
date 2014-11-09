@@ -63,7 +63,7 @@ func TestSourceFileBody(t *testing.T) {
 	expectedContent := "1f8b080000096e8800ff72cbcf57704a2ce202040000ffff4f79994a08000000"
 	expected, _ := hex.DecodeString(expectedContent)
 
-	if actual := sf.body(); !bytes.Equal(expected, actual) {
+	if actual, _ := sf.body(); !bytes.Equal(expected, actual) {
 		t.Error("Expected to get compressed content")
 	}
 
@@ -71,7 +71,23 @@ func TestSourceFileBody(t *testing.T) {
 	sf = newSourceFile(fname)
 	expectedStr := "Bar Baz\n"
 
-	if actual := sf.body(); string(actual) != expectedStr {
+	if actual, _ := sf.body(); string(actual) != expectedStr {
 		t.Errorf("Expected to get %s got %s", expectedStr, actual)
 	}
+
+	fname = "bogus"
+	sf = newSourceFile(fname)
+	expectedStr = ""
+
+	if actual, err := sf.body(); string(actual) != expectedStr || err == nil {
+		t.Errorf("Expected to get blank body and an error. Got no error and %s", actual)
+	}
+}
+
+func TestSourceFileAttempted(t *testing.T) {
+	t.Skip()
+}
+
+func TestSourceFileRetriable(t *testing.T) {
+	t.Skip()
 }

@@ -2,8 +2,9 @@ package main
 
 import (
 	"errors"
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/s3"
+	"fmt"
+	"sort"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -43,6 +44,28 @@ func TestValidateCmdLineFlag(t *testing.T) {
 	}
 }
 
+func TestCompletedListAdd(t *testing.T) {
+	n, cl := 10, &completedList{}
+	expectedArr := make([]string, n)
+	wg := new(sync.WaitGroup)
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		expectedArr[i] = fmt.Sprintf("%d", i)
+		go func(i int) {
+			defer wg.Done()
+			cl.add(fmt.Sprintf("%d", i))
+		}(i)
+	}
+	wg.Wait()
+	expected := strings.Join(expectedArr, ":")
+	sort.Strings(cl.list)
+	actual := strings.Join(cl.list, ":")
+
+	if expected != actual {
+		t.Errorf("Expected %s\n got %s\n", expected, actual)
+	}
+}
+
 func fakeUploaderGen(opts ...int) (fn uploader, out *([]*sourceFile)) {
 	errorKind, m := noError, sync.Mutex{}
 	if len(opts) > 0 {
@@ -50,7 +73,7 @@ func fakeUploaderGen(opts ...int) (fn uploader, out *([]*sourceFile)) {
 	}
 
 	out = &[]*sourceFile{}
-	fn = func(auth aws.Auth, bucket *s3.Bucket, src *sourceFile) (err error) {
+	fn = func(src *sourceFile) (err error) {
 		m.Lock()
 		*out = append(*out, src)
 		m.Unlock()
@@ -71,4 +94,5 @@ func init() {
 	opts.bucketName = "example_bucket"
 	opts.source = "test/output"
 	opts.cacheFile = "test/.go3up.txt"
+	appEnv = "test"
 }

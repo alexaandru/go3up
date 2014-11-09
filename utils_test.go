@@ -33,6 +33,9 @@ func TestMsg(t *testing.T) {
 	if actual := msg("Foo", "bar", "baz"); actual != "baz" {
 		t.Error("Expected baz got", actual)
 	}
+	if actual := msg(); actual != "" {
+		t.Error("Expected message to be blank, got", actual)
+	}
 
 	opts.quiet = false
 	if actual := msg("Foo", "bar", "baz"); actual != "bar" {
@@ -45,10 +48,6 @@ func TestMsg(t *testing.T) {
 
 	opts.verbose = verbose
 	opts.quiet = quiet
-}
-
-func TestQuit(t *testing.T) {
-	t.Skip("No idea how to test this one yet")
 }
 
 func TestBetterMime(t *testing.T) {

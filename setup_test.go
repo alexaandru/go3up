@@ -2,9 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
-	"sort"
-	"strings"
 	"sync"
 	"testing"
 )
@@ -41,28 +38,6 @@ func TestValidateCmdLineFlag(t *testing.T) {
 
 	if err := validateCmdLineFlag("Bucket Name", ""); err == nil {
 		t.Error("Expected foobar bucket name to fail validation")
-	}
-}
-
-func TestCompletedListAdd(t *testing.T) {
-	n, cl := 10, &completedList{}
-	expectedArr := make([]string, n)
-	wg := new(sync.WaitGroup)
-	wg.Add(n)
-	for i := 0; i < n; i++ {
-		expectedArr[i] = fmt.Sprintf("%d", i)
-		go func(i int) {
-			defer wg.Done()
-			cl.add(fmt.Sprintf("%d", i))
-		}(i)
-	}
-	wg.Wait()
-	expected := strings.Join(expectedArr, ":")
-	sort.Strings(cl.list)
-	actual := strings.Join(cl.list, ":")
-
-	if expected != actual {
-		t.Errorf("Expected %s\n got %s\n", expected, actual)
 	}
 }
 

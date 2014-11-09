@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sync"
 )
 
 type options struct {
@@ -16,11 +15,6 @@ type options struct {
 	bucketName, source,
 	cacheFile string
 	dryRun, verbose, quiet, doCache, doUpload, gzipHTML bool
-}
-
-type completedList struct {
-	list []string
-	sync.Mutex
 }
 
 var opts *options
@@ -89,12 +83,6 @@ func validateCmdLineFlag(label, val string) (err error) {
 	}
 
 	return
-}
-
-func (cl *completedList) add(fname string) {
-	cl.Lock()
-	cl.list = append(cl.list, fname)
-	cl.Unlock()
 }
 
 func init() {

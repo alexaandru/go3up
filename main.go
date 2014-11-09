@@ -37,7 +37,7 @@ func filesLists() (current utils.FileHashes, diff []string) {
 
 // upload fetches sourceFiles from uploads chan, attempts to upload them and enqueue the results to
 // completed list. On failure it attempts to retry, up to maxTries per source file.
-func upload(id string, fn uploader, uploads chan *sourceFile, completed *completedList, wgUploads, wgWorkers *sync.WaitGroup) {
+func upload(id string, fn uploader, uploads chan *sourceFile, rejected *syncedlist, wgUploads, wgWorkers *sync.WaitGroup) {
 	defer wgWorkers.Done()
 
 	for src := range uploads {
@@ -51,7 +51,6 @@ func upload(id string, fn uploader, uploads chan *sourceFile, completed *complet
 
 		err := fn(src)
 		if err == nil {
-			completed.add(src.fname)
 			wgUploads.Done()
 			fmt.Print(msg("Uploaded "+src.fname, "."))
 			continue
@@ -59,6 +58,7 @@ func upload(id string, fn uploader, uploads chan *sourceFile, completed *complet
 
 		src.recordAttempt()
 		if !src.retriable() || !isRecoverable(err) {
+			rejected.add(src.fname)
 			fmt.Print(msg("Failed to upload "+src.fname, "f"))
 			wgUploads.Done()
 			continue
@@ -102,7 +102,7 @@ Setup:
 	}
 
 	// Sync setup
-	uploads, completed := make(chan *sourceFile), &completedList{}
+	uploads, rejected := make(chan *sourceFile), &syncedlist{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	// Current list of files, and diff to be uploaded
@@ -124,7 +124,7 @@ Upload:
 	wgUploads.Add(len(diff))
 	wgWorkers.Add(opts.workersCount)
 	for i := 0; i < opts.workersCount; i++ {
-		go upload(fmt.Sprintf("%d", i), s3put, uploads, completed, wgUploads, wgWorkers)
+		go upload(fmt.Sprintf("%d", i), s3put, uploads, rejected, wgUploads, wgWorkers)
 	}
 
 	sort.Strings(diff)
@@ -149,7 +149,7 @@ Cache:
 	}
 
 	// Only retain files actually completed.
-	current = current.Filter(completed.list)
+	current = current.Reject(rejected.list)
 	if err := current.Dump(opts.cacheFile); err != nil {
 		fmt.Println("Caching failed: ", err)
 		goto Finish

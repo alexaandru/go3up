@@ -29,7 +29,7 @@ func TestFilesList(t *testing.T) {
 func TestUpload(t *testing.T) {
 	upFn, uploads := fakeUploaderGen()
 	up := make(chan *sourceFile)
-	completed := &completedList{}
+	rejected := &syncedlist{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	wgUploads.Add(2)
@@ -37,7 +37,7 @@ func TestUpload(t *testing.T) {
 
 	opts.verbose = false
 	opts.quiet = true
-	go upload("a", upFn, up, completed, wgUploads, wgWorkers)
+	go upload("a", upFn, up, rejected, wgUploads, wgWorkers)
 
 	up <- newSourceFile("foobar.html")
 	up <- newSourceFile("barbaz.txt")
@@ -55,7 +55,7 @@ func TestUpload(t *testing.T) {
 func TestUploadDryRun(t *testing.T) {
 	upFn, uploads := fakeUploaderGen()
 	up := make(chan *sourceFile)
-	completed := &completedList{}
+	rejected := &syncedlist{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	wgUploads.Add(2)
@@ -65,7 +65,7 @@ func TestUploadDryRun(t *testing.T) {
 	opts.dryRun = true
 	opts.verbose = false
 	opts.quiet = true
-	go upload("b", upFn, up, completed, wgUploads, wgWorkers)
+	go upload("b", upFn, up, rejected, wgUploads, wgWorkers)
 
 	up <- newSourceFile("foobar.html")
 	up <- newSourceFile("barbaz.txt")
@@ -84,7 +84,7 @@ func TestUploadDryRun(t *testing.T) {
 func TestUploadUnrecoverable(t *testing.T) {
 	upFn, uploads := fakeUploaderGen(fatalError)
 	up := make(chan *sourceFile)
-	completed := &completedList{}
+	rejected := &syncedlist{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	wgUploads.Add(2)
@@ -92,7 +92,7 @@ func TestUploadUnrecoverable(t *testing.T) {
 
 	opts.verbose = false
 	opts.quiet = true
-	go upload("c", upFn, up, completed, wgUploads, wgWorkers)
+	go upload("c", upFn, up, rejected, wgUploads, wgWorkers)
 
 	up <- newSourceFile("foobar.html")
 	up <- newSourceFile("barbaz.txt")
@@ -105,8 +105,8 @@ func TestUploadUnrecoverable(t *testing.T) {
 	if len(*uploads) != 2 {
 		t.Fatal("Expected both uploads to be processed, got", *uploads)
 	}
-	if len(completed.list) != 0 {
-		t.Fatal("Expected none of the uploads to be completed, got", completed.list)
+	if len(rejected.list) != 2 {
+		t.Fatal("Expected all of the uploads to be rejected, got", rejected.list)
 	}
 }
 
@@ -114,16 +114,16 @@ func TestUploadRecoverable(t *testing.T) {
 	upFn, uploads := fakeUploaderGen(recoverableError)
 	_ = uploads
 	up := make(chan *sourceFile)
-	completed := &completedList{}
+	rejected := &syncedlist{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	wgUploads.Add(2)
-	wgWorkers.Add(1)
+	wgWorkers.Add(2)
 
 	opts.quiet = true
 	opts.verbose = false
-	go upload("d", upFn, up, completed, wgUploads, wgWorkers)
-	// go upload("e", upFn, up, completed, wgUploads, wgWorkers)
+	go upload("d", upFn, up, rejected, wgUploads, wgWorkers)
+	go upload("e", upFn, up, rejected, wgUploads, wgWorkers)
 
 	sf1, sf2 := newSourceFile("barbaz.txt"), newSourceFile("foobar.html")
 	up <- sf1
@@ -140,12 +140,12 @@ func TestUploadRecoverable(t *testing.T) {
 	if sf1.attempts != maxTries || sf2.attempts != maxTries {
 		t.Fatal("Expected both files to have their attempts exhausted got", sf1.attempts, "and", sf2.attempts)
 	}
-	if len(completed.list) != 0 {
-		t.Fatal("Expected none of the uploads to be completed, got", completed.list)
+	if len(rejected.list) != 2 {
+		t.Fatal("Expected all of the uploads to be rejected, got", rejected.list)
 	}
 }
 
-func TestIntegration(t *testing.T) {
+func TestIntegrationMain(t *testing.T) {
 	if _, err := os.Create(opts.cacheFile); err != nil {
 		t.Fatal("Failed to truncate the cache file")
 	}
@@ -166,4 +166,8 @@ func TestIntegration(t *testing.T) {
 	// if expected, actual := "barbaz.txt:foobar.html", strings.Join(fnames, ":"); expected != actual {
 	// 	t.Fatalf("Expected %s to be uploaded got %s", expected, actual)
 	// }
+}
+
+func TestIntegrationPartialUpload(t *testing.T) {
+	t.Skip()
 }

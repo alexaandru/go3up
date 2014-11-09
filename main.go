@@ -20,6 +20,8 @@ const (
 	BadHeaderDefinition
 )
 
+type uploader func(aws.Auth, *s3.Bucket, *sourceFile) error
+
 // filesLists returns both the current files list as well as the difference from the old (cached) files list.
 func filesLists() (current utils.FileHashes, diff []string) {
 	var old utils.FileHashes
@@ -73,17 +75,16 @@ Upload:
 
 	wg.Add(opts.workersCount)
 	for i := 0; i < opts.workersCount; i++ {
-		// TODO: allow for easy swapping of s3put for uploads, for testing purposes.
-		go func() {
+		go func(fn uploader) {
 			defer wg.Done()
 			for src := range uploads {
 				if opts.dryRun {
 					fmt.Print(msg("Pretending to upload "+src.fname, "."))
 					continue
 				}
-				s3put(auth, bucket, src)
+				fn(auth, bucket, src)
 			}
-		}()
+		}(opts.upload)
 	}
 
 	for _, fname := range diff {

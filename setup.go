@@ -11,6 +11,7 @@ import (
 )
 
 type options struct {
+	upload       uploader
 	workersCount int
 	bucketName, source,
 	cacheFile string
@@ -94,4 +95,5 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	opts = new(options)
 	processCmdLineFlags(opts)
+	opts.upload = s3put
 }

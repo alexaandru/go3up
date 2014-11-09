@@ -1,6 +1,19 @@
 package main
 
-import "testing"
+import (
+	"errors"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
+	"sync"
+	"testing"
+)
+
+const (
+	_ = iota
+	noError
+	recoverableError
+	fatalError
+)
 
 func TestValidateCmdLineFlags(t *testing.T) {
 	opts1 := &options{bucketName: "example_bucket", source: "test/output", cacheFile: "test/.go3up.txt"}
@@ -28,6 +41,30 @@ func TestValidateCmdLineFlag(t *testing.T) {
 	if err := validateCmdLineFlag("Bucket Name", ""); err == nil {
 		t.Error("Expected foobar bucket name to fail validation")
 	}
+}
+
+func fakeUploaderGen(opts ...int) (fn uploader, out *([]*sourceFile)) {
+	errorKind, m := noError, sync.Mutex{}
+	if len(opts) > 0 {
+		errorKind = opts[0]
+	}
+
+	out = &[]*sourceFile{}
+	fn = func(auth aws.Auth, bucket *s3.Bucket, src *sourceFile) (err error) {
+		m.Lock()
+		*out = append(*out, src)
+		m.Unlock()
+
+		if errorKind == noError {
+			return
+		} else if errorKind == recoverableError {
+			return errors.New("Something something. " + recoverableErrorsSuffixes[0])
+		}
+
+		return errors.New("Some made up error")
+	}
+
+	return
 }
 
 func init() {

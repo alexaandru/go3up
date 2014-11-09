@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -29,5 +30,21 @@ func TestS3Put(t *testing.T) {
 }
 
 func TestIntegration(t *testing.T) {
-	t.Skip() // this one should test main() function and ensure program works from one end to another
+	if _, err := os.Create(opts.cacheFile); err != nil {
+		t.Fatal("Failed to truncate the cache file")
+	}
+
+	upFn, uploads := fakeUploaderGen()
+	opts.upload = upFn
+
+	main()
+
+	fnames := make([]string, len(*uploads))
+	for k, v := range *uploads {
+		fnames[k] = v.fname
+	}
+	sort.Strings(fnames)
+	if expected, actual := "barbaz.txt:foobar.html", strings.Join(fnames, ":"); expected != actual {
+		t.Fatalf("Expected %s to be uploaded got %s", expected, actual)
+	}
 }

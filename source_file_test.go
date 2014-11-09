@@ -23,15 +23,15 @@ func TestHeaderEqual(t *testing.T) {
 		headers{"foo": {"foo1"}}
 
 	if !h1.equal(h2) {
-		t.Error("Expected %v to equal %v", h1, h2)
+		t.Errorf("Expected %v to equal %v", h1, h2)
 	}
 
 	if h1.equal(h3) {
-		t.Error("Expected %v NOT to equal %v", h1, h3)
+		t.Errorf("Expected %v NOT to equal %v", h1, h3)
 	}
 
 	if h1.equal(h4) {
-		t.Error("Expected %v NOT to equal %v", h1, h4)
+		t.Errorf("Expected %v NOT to equal %v", h1, h4)
 	}
 }
 

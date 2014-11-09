@@ -24,16 +24,11 @@ type uploader func(aws.Auth, *s3.Bucket, *sourceFile) error
 
 // filesLists returns both the current files list as well as the difference from the old (cached) files list.
 func filesLists() (current utils.FileHashes, diff []string) {
-	var old utils.FileHashes
-	current, old = utils.FileHashesNew(opts.source), utils.FileHashes{}
+	current = utils.FileHashesNew(opts.source)
+	old := utils.FileHashes{}
 	old.Load(opts.cacheFile)
+
 	diff = current.Diff(old)
-
-	if len(diff) == 0 {
-		quit("Nothing to upload.", fmt.Errorf(""), Success)
-	}
-
-	fmt.Print(msg(fmt.Sprintf("There are %d files to be uploaded to '%s'", len(diff), opts.bucketName), "Uploading "))
 
 	return
 }
@@ -65,6 +60,12 @@ func main() {
 
 	current, diff := filesLists()
 	bucket, wg, uploads := s3.New(auth, aws.EUWest).Bucket(opts.bucketName), new(sync.WaitGroup), make(chan *sourceFile)
+	if len(diff) == 0 {
+		fmt.Print(msg("Nothing to upload."))
+		goto Finish
+	}
+	fmt.Print(msg(fmt.Sprintf("There are %d files to be uploaded to '%s'", len(diff), opts.bucketName), "Uploading "))
+
 	goto Upload // noop, just so that we can have an Upload: label
 
 Upload:

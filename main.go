@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/alexaandru/utils"
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/s3"
 	"math"
 	"os"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/alexaandru/utils"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 )
 
 // Exit codes
@@ -64,10 +65,9 @@ func upload(id string, fn uploader, uploads chan *sourceFile, completed *complet
 		}
 
 		go func() {
-			src, wait := src,
-				time.Duration(100.0*math.Pow(2, float64(src.attempts)))*time.Millisecond
+			wait := time.Duration(100.0*math.Pow(2, float64(src.attempts))) * time.Millisecond
 			if appEnv == "test" {
-				wait = time.Microsecond
+				wait = time.Nanosecond
 			}
 			<-time.After(wait)
 			uploads <- src
@@ -78,7 +78,9 @@ func upload(id string, fn uploader, uploads chan *sourceFile, completed *complet
 // FIXME: For some (all?) errors, we should re-initialize the bucket before retrying.
 func main() {
 	validateCmdLineFlags(opts)
+	goto Setup
 
+Setup:
 	// AWS setup
 	auth, err := aws.EnvAuth()
 	if err != nil {
@@ -110,8 +112,7 @@ func main() {
 		goto Finish
 	}
 	fmt.Print(msg(fmt.Sprintf("There are %d files to be uploaded to '%s'", len(diff), opts.bucketName), "Uploading "))
-
-	goto Upload // noop, just so that we can have an Upload: label
+	goto Upload
 
 Upload:
 	if !opts.doUpload {

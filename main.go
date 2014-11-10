@@ -65,6 +65,7 @@ func upload(id string, fn uploader, uploads chan *sourceFile, rejected *syncedli
 		}
 
 		go func() {
+			fmt.Print(msg("Retrying "+src.fname, "r"))
 			wait := time.Duration(100.0*math.Pow(2, float64(src.attempts))) * time.Millisecond
 			if appEnv == "test" {
 				wait = time.Nanosecond

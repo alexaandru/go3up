@@ -81,6 +81,13 @@ func upload(id string, fn uploader, uploads chan *sourceFile, rejected *syncedli
 // Generate an S3 put func. It holds the bucket in a closure.
 // FIXME: For some (all?) errors, we should re-initialize the bucket before retrying.
 func s3putGen() (up uploader, err error) {
+	if appEnv == "test" {
+		return func(src *sourceFile) error {
+			// TODO: capture the sourceFile for testing
+			return nil
+		}, nil
+	}
+
 	auth, err := aws.EnvAuth()
 	if err != nil {
 		return

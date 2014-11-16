@@ -63,6 +63,7 @@ func newSourceFile(fname string) (sf *sourceFile) {
 	for _, hdrs := range customHeadersDef {
 		if hdrs.pathPattern.MatchString(fname) {
 			sf.hdrs.merge(hdrs.headers)
+			break
 		}
 	}
 	if gzip, ok := sf.hdrs[ContentEncoding]; ok {

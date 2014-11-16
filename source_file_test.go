@@ -39,7 +39,7 @@ func TestHeaderEqual(t *testing.T) {
 func TestNewSourceFile(t *testing.T) {
 	fname := "foobar.html"
 	sf := newSourceFile(fname)
-	expectedHdrs := headers{ContentType: {"text/html; charset=utf-8"}, ContentEncoding: {"gzip"}, CacheControl: {"max-age=86400"}}
+	expectedHdrs := headers{ContentType: {"text/html; charset=utf-8"}, ContentEncoding: {"gzip"}, CacheControl: {"max-age=3600"}}
 
 	if sf.fname != fname {
 		t.Errorf("Expected fname to be set to %s got %s", fname, sf.fname)
@@ -55,6 +55,20 @@ func TestNewSourceFile(t *testing.T) {
 
 	if !sf.gzip {
 		t.Error("Expected .html files to be compressed")
+	}
+
+	tests := map[string]string{
+		"articole/foobar.html": "86400",
+		"articole/index.html":  "1800",
+		"index.html":           "1800",
+	}
+
+	for fname, ttl := range tests {
+		sf = newSourceFile(fname)
+		expectedHdrs = headers{ContentType: {"text/html; charset=utf-8"}, ContentEncoding: {"gzip"}, CacheControl: {"max-age=" + ttl}}
+		if !sf.hdrs.equal(expectedHdrs) {
+			t.Errorf("Expected hdrs to be set to %v got %v", expectedHdrs, sf.hdrs)
+		}
 	}
 }
 

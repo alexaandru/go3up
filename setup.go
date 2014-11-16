@@ -28,10 +28,10 @@ var r = regexp.MustCompile
 var customHeadersDef = []pathToHeaders{
 	pathToHeaders{r("index\\.html"),
 		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
+	pathToHeaders{r("articole.*\\.html$"),
+		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=86400"}},
 	pathToHeaders{r("[^/]*\\.html$"),
 		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=3600"}},
-	pathToHeaders{r("\\.html$"),
-		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=86400"}},
 	pathToHeaders{r("\\.xml$"),
 		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
 	pathToHeaders{r("\\.ico$"),

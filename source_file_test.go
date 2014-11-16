@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"sync"
 	"testing"
 )
 
@@ -85,9 +86,49 @@ func TestSourceFileBody(t *testing.T) {
 }
 
 func TestSourceFileAttempted(t *testing.T) {
-	t.Skip()
+	fname := "foobar.html"
+	sf := newSourceFile(fname)
+	wg := new(sync.WaitGroup)
+
+	wg.Add(2)
+	go func() {
+		for i := 0; i < 1000; i++ {
+			sf.recordAttempt()
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		for i := 0; i < 1000; i++ {
+			sf.recordAttempt()
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	if sf.attempts != 2000 {
+		t.Error("Expected 2000 attempts, got", sf.attempts)
+	}
 }
 
 func TestSourceFileRetriable(t *testing.T) {
-	t.Skip()
+	fname := "foobar.html"
+	sf := newSourceFile(fname)
+
+	if sf.attempts = 0; !sf.retriable() {
+		t.Fatal("A source file with no attempts should be retriable")
+	}
+
+	if sf.attempts = maxTries - 1; !sf.retriable() {
+		t.Fatal("A source file with less attempts than maxTries should be retriable")
+	}
+
+	if sf.attempts = maxTries; sf.retriable() {
+		t.Fatal("A source file with exactly maxTries attempts should NOT be retriable")
+	}
+
+	if sf.attempts = maxTries + 1; sf.retriable() {
+		t.Fatal("A source file with more than maxTries attempts should NOT be retriable")
+	}
 }

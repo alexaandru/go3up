@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"mime"
 	"path/filepath"
 	"strings"
@@ -14,6 +16,19 @@ var recoverableErrorsSuffixes = []string{
 	"no such host",
 	"transport closed before response was received",
 	"TLS handshake timeout",
+}
+
+func loggerGen(buffers ...*bytes.Buffer) func(msgs ...string) {
+	return func(msgs ...string) {
+		m := msg(msgs...)
+
+		if len(buffers) > 0 {
+			buffers[0].WriteString(m)
+			return
+		}
+
+		fmt.Print(m)
+	}
 }
 
 // isRecoverable verifies if the error given is in recoverableErrorsSuffixes list.
@@ -43,11 +58,9 @@ func msg(msgs ...string) string {
 		return ""
 	} else if len(msgs) > 1 {
 		return msgs[1]
-	} else if len(msgs) > 0 {
-		return msgs[0] + "\n"
 	}
 
-	return "Error, no message available"
+	return ""
 }
 
 // betterMime wrapps mime.TypeByExtension and tries to handle a few edge cases.

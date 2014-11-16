@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,6 +19,8 @@ type options struct {
 var opts *options
 
 var appEnv string
+
+var say func(...string)
 
 // Order matters: first hit, first served.
 // TODO: Make this configurable somehow, so that end users can provide their own mappings.
@@ -63,8 +64,7 @@ func validateCmdLineFlags(opts *options) (err error) {
 	flags := map[string]string{"Bucket Name": opts.bucketName, "Source": opts.source, "Cache file": opts.cacheFile}
 	for label, val := range flags {
 		if err = validateCmdLineFlag(label, val); err != nil {
-			fmt.Printf("%s should be set. Please use 'go3up -h' for help.\n", label)
-			os.Exit(CmdLineOptionError)
+			return
 		}
 	}
 
@@ -90,4 +90,5 @@ func init() {
 	opts = new(options)
 	processCmdLineFlags(opts)
 	appEnv = "production"
+	say = loggerGen()
 }

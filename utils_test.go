@@ -17,8 +17,8 @@ func TestIsRecoverable(t *testing.T) {
 
 func TestMsg(t *testing.T) {
 	actual := msg()
-	if expected := "Error, no message available"; actual != expected {
-		t.Error("Expected an error, got", actual)
+	if expected := ""; actual != expected {
+		t.Error("Expected a blank message, got", actual)
 	}
 
 	verbose := opts.verbose
@@ -42,8 +42,8 @@ func TestMsg(t *testing.T) {
 		t.Error("Expected bar got", actual)
 	}
 
-	if actual := msg("Foo"); actual != "Foo\n" {
-		t.Error("Expected Foo\\n got", actual)
+	if actual := msg("Foo"); actual != "" {
+		t.Error("Expected blank message got", actual)
 	}
 
 	opts.verbose = verbose

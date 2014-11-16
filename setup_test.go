@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"sync"
 	"testing"
@@ -13,14 +14,18 @@ const (
 	fatalError
 )
 
+var fakeBuffer *bytes.Buffer
+
 func TestValidateCmdLineFlags(t *testing.T) {
 	opts1 := &options{bucketName: "example_bucket", source: "test/output", cacheFile: "test/.go3up.txt"}
 	if err := validateCmdLineFlags(opts1); err != nil {
 		t.Errorf("Expected %v to pass validation", opts1)
 	}
 
-	_ = &options{bucketName: "", source: "test/output", cacheFile: "test/.go3up.txt"}
-	t.Skip("os.Exit again, skipping it...")
+	opts1 = &options{bucketName: "", source: "test/output", cacheFile: "test/.go3up.txt"}
+	if err := validateCmdLineFlags(opts1); err == nil {
+		t.Error("Expected to fail validation")
+	}
 }
 
 func TestValidateCmdLineFlag(t *testing.T) {
@@ -70,4 +75,6 @@ func init() {
 	opts.source = "test/output"
 	opts.cacheFile = "test/.go3up.txt"
 	appEnv = "test"
+	fakeBuffer := &bytes.Buffer{}
+	say = loggerGen(fakeBuffer)
 }

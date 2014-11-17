@@ -5,7 +5,7 @@ test:
 	@go test ./...
 
 run: build
-	@./go3up -bucket="s3.ungur.ro"
+	@./go3up -bucket="s3.ungur.ro" -source=test/output -cachefile=test/.go3up.txt
 
 cover:
 	@go test -coverprofile=coverage.out

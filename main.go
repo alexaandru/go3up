@@ -153,12 +153,12 @@ func main() {
 Cache:
 	if !opts.doCache {
 		say("Skipping cache.")
-		goto Finish
+		goto Done
 	}
 
 	if opts.dryRun {
 		say("Pretending to update cache.")
-		goto Finish
+		goto Done
 	}
 
 	current = current.Reject(rejected.list)
@@ -168,6 +168,6 @@ Cache:
 	}
 	say("Done updating cache.")
 
-Finish:
+Done:
 	say("All done!", " done!\n")
 }

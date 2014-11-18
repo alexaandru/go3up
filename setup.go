@@ -26,22 +26,14 @@ var say func(...string)
 // TODO: Make this configurable somehow, so that end users can provide their own mappings.
 var r = regexp.MustCompile
 var customHeadersDef = []pathToHeaders{
-	pathToHeaders{r("index\\.html"),
-		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
-	pathToHeaders{r("articole.*\\.html$"),
-		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=86400"}},
-	pathToHeaders{r("[^/]*\\.html$"),
-		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=3600"}},
-	pathToHeaders{r("\\.xml$"),
-		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
-	pathToHeaders{r("\\.ico$"),
-		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
-	pathToHeaders{r("\\.(js|css)$"),
-		headersDef{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
-	pathToHeaders{r("images/articole/.*(jpg|JPG|png|PNG)$"),
-		headersDef{CacheControl: "max-age=31536000"}},
-	pathToHeaders{r("\\.(jpg|JPG|png|PNG)$"),
-		headersDef{CacheControl: "max-age=31536000"}},
+	{r("index\\.html"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
+	{r("articole.*\\.html$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=86400"}},
+	{r("[^/]*\\.html$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=3600"}},
+	{r("\\.xml$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
+	{r("\\.ico$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
+	{r("\\.(js|css)$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
+	{r("images/articole/.*(jpg|JPG|png|PNG)$"), headersDef{CacheControl: "max-age=31536000"}},
+	{r("\\.(jpg|JPG|png|PNG)$"), headersDef{CacheControl: "max-age=31536000"}},
 }
 
 // processCmdLineFlags wraps the command line flags handling.

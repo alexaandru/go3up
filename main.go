@@ -61,7 +61,7 @@ func upload(id string, fn uploader, uploads chan *sourceFile, rejected *syncedli
 		src.recordAttempt()
 		if !src.retriable() || !isRecoverable(err) {
 			rejected.add(src.fname)
-			say("Failed to upload "+src.fname+": "+err.Error(), "f")
+			say("Failed to upload "+src.fname+": "+err.Error(), "F")
 			wgUploads.Done()
 			continue
 		}

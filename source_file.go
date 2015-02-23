@@ -12,9 +12,10 @@ import (
 
 // Headers
 const (
-	ContentEncoding = "Content-Encoding"
-	CacheControl    = "Cache-Control"
-	ContentType     = "Content-Type"
+	ContentEncoding      = "Content-Encoding"
+	CacheControl         = "Cache-Control"
+	ContentType          = "Content-Type"
+	ServerSideEncryption = "x-amz-server-side-encryption"
 )
 
 // headers definition
@@ -68,6 +69,11 @@ func newSourceFile(fname string) (sf *sourceFile) {
 	}
 	if gzip, ok := sf.hdrs[ContentEncoding]; ok {
 		sf.gzip = (gzip[0] == "gzip")
+	}
+	if opts.encrypt {
+		hdrs := headersDef{}
+		hdrs[ServerSideEncryption] = "AES256"
+		sf.hdrs.merge(hdrs)
 	}
 
 	return

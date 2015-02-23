@@ -13,7 +13,9 @@ type options struct {
 	workersCount int
 	bucketName, source,
 	cacheFile string
-	dryRun, verbose, quiet, doCache, doUpload, gzipHTML bool
+	dryRun, verbose, quiet,
+	doCache, doUpload,
+	gzipHTML, encrypt bool
 }
 
 var opts *options
@@ -48,6 +50,7 @@ func processCmdLineFlags(opts *options) {
 	flag.BoolVar(&opts.doUpload, "upload", true, "Do perform an upload")
 	flag.BoolVar(&opts.doCache, "cache", true, "Do update the cache")
 	flag.BoolVar(&opts.gzipHTML, "gzip", true, "Gzip HTML files")
+	flag.BoolVar(&opts.encrypt, "encrypt", false, "Encrypt files on server side")
 	flag.Parse()
 }
 

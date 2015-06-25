@@ -93,7 +93,7 @@ func s3putGen() (up uploader, err error) {
 		return
 	}
 
-	bucket := s3.New(auth, aws.EUWest).Bucket(opts.bucketName)
+	bucket := s3.New(auth, aws.Regions[opts.region]).Bucket(opts.bucketName)
 	return func(src *sourceFile) (err error) {
 		var body []byte
 		body, err = src.body()

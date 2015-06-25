@@ -3,10 +3,14 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
+
+	"github.com/mitchellh/goamz/aws"
 )
 
 type options struct {
@@ -16,6 +20,7 @@ type options struct {
 	dryRun, verbose, quiet,
 	doCache, doUpload,
 	gzipHTML, encrypt bool
+	region string
 }
 
 var opts *options
@@ -44,6 +49,7 @@ func processCmdLineFlags(opts *options) {
 	flag.StringVar(&opts.bucketName, "bucket", "", "S3 bucket to upload files to")
 	flag.StringVar(&opts.source, "source", "output", "Source folder for files to be uploaded to S3")
 	flag.StringVar(&opts.cacheFile, "cachefile", filepath.Join(".go3up.txt"), "Location of the cache file")
+	flag.StringVar(&opts.region, "region", "", "AWS region")
 	flag.BoolVar(&opts.dryRun, "dry", false, "Dry run (no upload/cache update)")
 	flag.BoolVar(&opts.verbose, "verbose", false, "Print the name of the files as they are uploaded")
 	flag.BoolVar(&opts.quiet, "quiet", false, "Print only warnings and errors")
@@ -56,19 +62,33 @@ func processCmdLineFlags(opts *options) {
 
 // validateCmdLineFlags validates some of the flags, mostly paths. Defers actual validation to validateCmdLineFlag()
 func validateCmdLineFlags(opts *options) (err error) {
-	flags := map[string]string{"Bucket Name": opts.bucketName, "Source": opts.source, "Cache file": opts.cacheFile}
+	flags := map[string]string{
+		"Bucket Name": opts.bucketName,
+		"Source":      opts.source,
+		"Cache file":  opts.cacheFile,
+		"AWS region":  opts.region,
+	}
 	for label, val := range flags {
 		if err = validateCmdLineFlag(label, val); err != nil {
 			return
 		}
 	}
-
 	return
 }
 
 // validateCmdLineFlag handles the actual validation of flags.
 func validateCmdLineFlag(label, val string) (err error) {
 	switch label {
+	case "AWS region":
+		_, ok := aws.Regions[val]
+		if !ok {
+			var regions []string
+			for k, _ := range aws.Regions {
+				regions = append(regions, k)
+			}
+			return fmt.Errorf("invalid AWS region: %s. Valid regions: %s",
+				val, strings.Join(regions, ", "))
+		}
 	case "Bucket Name":
 		if val == "" {
 			return errors.New(label + " is not set")
@@ -76,7 +96,6 @@ func validateCmdLineFlag(label, val string) (err error) {
 	default:
 		_, err = os.Stat(val)
 	}
-
 	return
 }
 

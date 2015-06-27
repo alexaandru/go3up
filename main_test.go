@@ -152,7 +152,7 @@ func TestIntegrationMain(t *testing.T) {
 
 	upFn, uploads := fakeUploaderGen()
 	_ = upFn
-
+	opts.region = "us-west-1"
 	opts.quiet = true
 	main()
 	opts.quiet = false

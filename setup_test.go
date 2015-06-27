@@ -17,7 +17,7 @@ const (
 var fakeBuffer *bytes.Buffer
 
 func TestValidateCmdLineFlags(t *testing.T) {
-	opts1 := &options{bucketName: "example_bucket", source: "test/output", cacheFile: "test/.go3up.txt"}
+	opts1 := &options{bucketName: "example_bucket", source: "test/output", cacheFile: "test/.go3up.txt", region: "us-west-1"}
 	if err := validateCmdLineFlags(opts1); err != nil {
 		t.Errorf("Expected %v to pass validation", opts1)
 	}

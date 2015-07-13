@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/base64"
 	"fmt"
 	"math"
 	"os"
@@ -102,7 +104,17 @@ func s3putGen() (up uploader, err error) {
 			src.attempts = maxTries
 			return
 		}
-
+		if opts.md5verify {
+			digest := md5.New()
+			_, err := digest.Write(body)
+			if err != nil {
+				panic(err)
+			}
+			md5sum := base64.StdEncoding.EncodeToString(digest.Sum(nil))
+			hdrs := headersDef{}
+			hdrs[ContentMD5] = md5sum
+			src.hdrs.merge(hdrs)
+		}
 		return bucket.PutHeader(src.fname, body, src.hdrs, s3.PublicRead)
 	}, nil
 }

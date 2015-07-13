@@ -21,6 +21,7 @@ type options struct {
 	doCache, doUpload,
 	gzipHTML, encrypt bool
 	region string
+	md5verify bool
 }
 
 var opts *options
@@ -57,6 +58,7 @@ func processCmdLineFlags(opts *options) {
 	flag.BoolVar(&opts.doCache, "cache", true, "Do update the cache")
 	flag.BoolVar(&opts.gzipHTML, "gzip", true, "Gzip HTML files")
 	flag.BoolVar(&opts.encrypt, "encrypt", false, "Encrypt files on server side")
+	flag.BoolVar(&opts.md5verify, "md5verify", false, "Verify PUT's using s3 Content-MD5 header")
 	flag.Parse()
 }
 

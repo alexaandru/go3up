@@ -15,6 +15,7 @@ const (
 	ContentEncoding      = "Content-Encoding"
 	CacheControl         = "Cache-Control"
 	ContentType          = "Content-Type"
+	ContentMD5           = "Content-MD5"
 	ServerSideEncryption = "x-amz-server-side-encryption"
 )
 

@@ -1,17 +1,31 @@
-go3up
-=====
+# Go S3 Uploader
 
 [![Build Status](https://travis-ci.org/alexaandru/go3up.png?branch=master)](https://travis-ci.org/alexaandru/go3up)
 [![GoDoc](https://godoc.org/github.com/alexaandru/go3up?status.png)](https://godoc.org/github.com/alexaandru/go3up)
-[![status](https://sourcegraph.com/api/repos/github.com/alexaandru/go3up/badges/status.png)](https://sourcegraph.com/github.com/alexaandru/go3up)
 
-Go S3 Uploader
+Go3Up (Go S3 Uploader) is a small S3 uploader tool.
 
-TODO
-----
+It was created in order to speed up S3 uploads by employing a local caching of files' md5 sums.
+That way, on subsequent runs, go3up can compute a list of the files that changed since the
+last upload and only upload those.
 
- - implement optimizations as per https://aws.amazon.com/articles/1904/ , the "Optimizing Network Performance" section in particular;
- - implement (optional) MD5 verification (see Content-MD5 at http://docs.aws.amazon.com/AmazonS3/latest/API/RESTObjectPUT.html);
- - implement multipart uploads + non "slurp mode" file read (+ make the limit where multipart kicks in configurable);
- - implement deletion of remote files missing on local;
- - (maybe) implement config file (from curr dir/home);
+The initial use case was a large static site (with 10k+ files) that frequently changed only
+a small subset of files (about ~100 routinely). In that particular case, the time reduction by
+switching from s3cmd to go3up was significant.
+
+On uploads with empty cache there may not be any benefit.
+
+The current focus of the tool is just one way/uploads (without deleting things that were removed
+locally, yet).
+
+## Usage
+
+Run `go3up -h` to get the help. You can save your preferences to a .go3up.json config file by
+passing your command line flags as usual and adding "-save" at the end.
+
+For authentication, see http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
+as we pretty much support all of those options, in this order: shared profile; EC2 role; env vars.
+
+## TODO
+
+ - implement (optional) deletion of remote files missing on local.

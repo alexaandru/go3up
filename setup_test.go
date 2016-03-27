@@ -17,12 +17,12 @@ const (
 var fakeBuffer *bytes.Buffer
 
 func TestValidateCmdLineFlags(t *testing.T) {
-	opts1 := &options{bucketName: "example_bucket", source: "test/output", cacheFile: "test/.go3up.txt", region: "us-west-1"}
+	opts1 := &options{BucketName: "example_bucket", Source: "test/output", CacheFile: "test/.go3up.txt", Region: "us-west-1"}
 	if err := validateCmdLineFlags(opts1); err != nil {
 		t.Errorf("Expected %v to pass validation", opts1)
 	}
 
-	opts1 = &options{bucketName: "", source: "test/output", cacheFile: "test/.go3up.txt"}
+	opts1 = &options{BucketName: "", Source: "test/output", CacheFile: "test/.go3up.txt"}
 	if err := validateCmdLineFlags(opts1); err == nil {
 		t.Error("Expected to fail validation")
 	}
@@ -71,9 +71,9 @@ func fakeUploaderGen(opts ...int) (fn uploader, out *([]*sourceFile)) {
 }
 
 func init() {
-	opts.bucketName = "example_bucket"
-	opts.source = "test/output"
-	opts.cacheFile = "test/.go3up.txt"
+	opts.BucketName = "example_bucket"
+	opts.Source = "test/output"
+	opts.CacheFile = "test/.go3up.txt"
 	appEnv = "test"
 	fakeBuffer := &bytes.Buffer{}
 	say = loggerGen(fakeBuffer)

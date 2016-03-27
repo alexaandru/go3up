@@ -1,33 +1,27 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
-	"io/ioutil"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 )
 
 // Headers
 const (
-	ContentEncoding      = "Content-Encoding"
-	CacheControl         = "Cache-Control"
-	ContentType          = "Content-Type"
-	ContentMD5           = "Content-MD5"
-	ServerSideEncryption = "x-amz-server-side-encryption"
+	ContentEncoding = "Content-Encoding"
+	CacheControl    = "Cache-Control"
+	ContentType     = "Content-Type"
+	// pseudo headers
+	Encryption = "EncryptionON"
 )
 
-// headers definition
-type headersDef map[string]string
+var sse = "AES256"
 
-// headers in a format suitable for s3 put
-type headers map[string]([]string)
+type headers map[string]string
 
 type pathToHeaders struct {
 	pathPattern *regexp.Regexp
-	headers     map[string]string
+	headers
 }
 
 type sourceFile struct {
@@ -39,9 +33,9 @@ type sourceFile struct {
 	sync.Mutex
 }
 
-func (h *headers) merge(other headersDef) {
+func (h *headers) merge(other headers) {
 	for key, val := range other {
-		(*h)[key] = []string{val}
+		(*h)[key] = val
 	}
 }
 
@@ -50,8 +44,7 @@ func (h *headers) equal(other headers) bool {
 		return false
 	}
 	for k, val1 := range *h {
-		val2 := other[k]
-		if v1, v2 := strings.Join(val1, ":"), strings.Join(val2, ":"); v1 != v2 {
+		if val2 := other[k]; val1 != val2 {
 			return false
 		}
 	}
@@ -60,41 +53,31 @@ func (h *headers) equal(other headers) bool {
 }
 
 func newSourceFile(fname string) (sf *sourceFile) {
-	sf = &sourceFile{fname: fname, fpath: filepath.Join(opts.source, fname)}
-	sf.hdrs = headers{ContentType: {betterMime(fname)}}
+	sf = &sourceFile{fname: fname, fpath: filepath.Join(opts.Source, fname)}
+	sf.hdrs = headers{ContentType: betterMime(fname)}
 	for _, hdrs := range customHeadersDef {
 		if hdrs.pathPattern.MatchString(fname) {
 			sf.hdrs.merge(hdrs.headers)
 			break
 		}
 	}
-	if gzip, ok := sf.hdrs[ContentEncoding]; ok {
-		sf.gzip = (gzip[0] == "gzip")
-	}
-	if opts.encrypt {
-		hdrs := headersDef{}
-		hdrs[ServerSideEncryption] = "AES256"
-		sf.hdrs.merge(hdrs)
-	}
+	sf.gzip = (sf.hdrs[ContentEncoding] == "gzip")
 
 	return
 }
 
-func (s *sourceFile) body() (data []byte, err error) {
-	data, err = ioutil.ReadFile(s.fpath)
-	if err != nil {
-		return
+func (s *sourceFile) getHeader(hdr string) *string {
+	if hdr == Encryption {
+		if opts.Encrypt {
+			return &sse
+		}
+
+		return nil
+	} else if v, ok := s.hdrs[hdr]; ok {
+		return &v
 	}
 
-	if s.gzip {
-		buf := &bytes.Buffer{}
-		w := gzip.NewWriter(buf)
-		w.Write(data)
-		err = w.Close()
-		return buf.Bytes(), err
-	}
-
-	return
+	return nil
 }
 
 func (s *sourceFile) recordAttempt() {

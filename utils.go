@@ -23,7 +23,7 @@ func loggerGen(buffers ...*bytes.Buffer) func(msgs ...string) {
 		m := msg(msgs...)
 
 		if len(buffers) > 0 {
-			buffers[0].WriteString(m)
+			_, _ = buffers[0].WriteString(m)
 			return
 		}
 

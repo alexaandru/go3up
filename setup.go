@@ -5,28 +5,34 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"runtime"
-	"strings"
 
-	"github.com/mitchellh/goamz/aws"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go/aws/ec2metadata"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-type options struct {
-	workersCount int
-	bucketName, source,
-	cacheFile string
-	dryRun, verbose, quiet,
-	doCache, doUpload,
-	gzipHTML, encrypt bool
-	region string
-	md5verify bool
+var opts = &options{
+	WorkersCount: runtime.NumCPU() * 2,
+	Source:       "output",
+	CacheFile:    ".go3up.txt",
+	doUpload:     true,
+	doCache:      true,
+	Region:       os.Getenv("AWS_DEFAULT_REGION"),
+	Profile:      os.Getenv("AWS_DEFAULT_PROFILE"),
+	cfgFile:      ".go3up.json",
 }
 
-var opts *options
-
 var appEnv string
+
+// s3 session.
+var sess = session.New()
+
+var s3svc *s3.S3
 
 var say func(...string)
 
@@ -34,41 +40,41 @@ var say func(...string)
 // TODO: Make this configurable somehow, so that end users can provide their own mappings.
 var r = regexp.MustCompile
 var customHeadersDef = []pathToHeaders{
-	{r("index\\.html"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
-	{r("articole.*\\.html$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=86400"}},
-	{r("[^/]*\\.html$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=3600"}},
-	{r("\\.xml$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
-	{r("\\.ico$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
-	{r("\\.(js|css)$"), headersDef{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
-	{r("images/articole/.*(jpg|JPG|png|PNG)$"), headersDef{CacheControl: "max-age=31536000"}},
-	{r("\\.(jpg|JPG|png|PNG)$"), headersDef{CacheControl: "max-age=31536000"}},
+	{r("index\\.html"), headers{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
+	{r("articole.*\\.html$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=86400"}},
+	{r("[^/]*\\.html$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=3600"}},
+	{r("\\.xml$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
+	{r("\\.ico$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
+	{r("\\.(js|css)$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
+	{r("images/articole/.*(jpg|JPG|png|PNG)$"), headers{CacheControl: "max-age=31536000"}},
+	{r("\\.(jpg|JPG|png|PNG)$"), headers{CacheControl: "max-age=31536000"}},
 }
 
 // processCmdLineFlags wraps the command line flags handling.
 func processCmdLineFlags(opts *options) {
-	flag.IntVar(&opts.workersCount, "workers", 42, "No. of workers/threads to use for S3 uploads")
-	flag.StringVar(&opts.bucketName, "bucket", "", "S3 bucket to upload files to")
-	flag.StringVar(&opts.source, "source", "output", "Source folder for files to be uploaded to S3")
-	flag.StringVar(&opts.cacheFile, "cachefile", filepath.Join(".go3up.txt"), "Location of the cache file")
-	flag.StringVar(&opts.region, "region", "", "AWS region")
-	flag.BoolVar(&opts.dryRun, "dry", false, "Dry run (no upload/cache update)")
-	flag.BoolVar(&opts.verbose, "verbose", false, "Print the name of the files as they are uploaded")
-	flag.BoolVar(&opts.quiet, "quiet", false, "Print only warnings and errors")
-	flag.BoolVar(&opts.doUpload, "upload", true, "Do perform an upload")
-	flag.BoolVar(&opts.doCache, "cache", true, "Do update the cache")
-	flag.BoolVar(&opts.gzipHTML, "gzip", true, "Gzip HTML files")
-	flag.BoolVar(&opts.encrypt, "encrypt", false, "Encrypt files on server side")
-	flag.BoolVar(&opts.md5verify, "md5verify", false, "Verify PUT's using s3 Content-MD5 header")
+	flag.IntVar(&opts.WorkersCount, "workers", opts.WorkersCount, "No. of workers to use for uploads")
+	flag.StringVar(&opts.BucketName, "bucket", opts.BucketName, "Bucket to upload files to")
+	flag.StringVar(&opts.Source, "source", opts.Source, "Source folder for files to be uploaded")
+	flag.StringVar(&opts.CacheFile, "cachefile", opts.CacheFile, "Location of the cache file")
+	flag.StringVar(&opts.Region, "region", opts.Region, "AWS region")
+	flag.StringVar(&opts.Profile, "profile", opts.Profile, "AWS shared profile")
+	flag.StringVar(&opts.cfgFile, "cfgfile", opts.cfgFile, "Config file location")
+	flag.BoolVar(&opts.dryRun, "dry", opts.dryRun, "Dry run (do not upload/update cache)")
+	flag.BoolVar(&opts.verbose, "verbose", opts.verbose, "Print the name of the files as they are uploaded")
+	flag.BoolVar(&opts.quiet, "quiet", opts.quiet, "Print only warnings and/or errors")
+	flag.BoolVar(&opts.doUpload, "upload", opts.doUpload, "Do perform an upload")
+	flag.BoolVar(&opts.doCache, "cache", opts.doCache, "Do update the cache")
+	flag.BoolVar(&opts.Encrypt, "encrypt", opts.Encrypt, "Encrypt files on server side")
+	flag.BoolVar(&opts.saveCfg, "save", opts.saveCfg, "Saves the current commandline options to a config file")
 	flag.Parse()
 }
 
 // validateCmdLineFlags validates some of the flags, mostly paths. Defers actual validation to validateCmdLineFlag()
 func validateCmdLineFlags(opts *options) (err error) {
 	flags := map[string]string{
-		"Bucket Name": opts.bucketName,
-		"Source":      opts.source,
-		"Cache file":  opts.cacheFile,
-		"AWS region":  opts.region,
+		"Bucket Name": opts.BucketName,
+		"Source":      opts.Source,
+		"Cache file":  opts.CacheFile,
 	}
 	for label, val := range flags {
 		if err = validateCmdLineFlag(label, val); err != nil {
@@ -81,16 +87,6 @@ func validateCmdLineFlags(opts *options) (err error) {
 // validateCmdLineFlag handles the actual validation of flags.
 func validateCmdLineFlag(label, val string) (err error) {
 	switch label {
-	case "AWS region":
-		_, ok := aws.Regions[val]
-		if !ok {
-			var regions []string
-			for k, _ := range aws.Regions {
-				regions = append(regions, k)
-			}
-			return fmt.Errorf("invalid AWS region: %s. Valid regions: %s",
-				val, strings.Join(regions, ", "))
-		}
 	case "Bucket Name":
 		if val == "" {
 			return errors.New(label + " is not set")
@@ -101,10 +97,57 @@ func validateCmdLineFlag(label, val string) (err error) {
 	return
 }
 
+func initAWSClient() {
+	creds := credentials.NewChainCredentials(
+		[]credentials.Provider{
+			&credentials.SharedCredentialsProvider{Profile: opts.Profile},
+			&ec2rolecreds.EC2RoleProvider{Client: ec2metadata.New(sess)},
+			&credentials.EnvProvider{},
+		})
+
+	retries := 2
+	awsCfg := &aws.Config{
+		Credentials: creds,
+		Region:      &opts.Region,
+		MaxRetries:  &retries,
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			// If we got to this, then getting the credentials failed - nothing else
+			// can raise a panic in here.
+			abort(fmt.Errorf("Unable to initialize AWS credentials - please check environment."))
+		}
+	}()
+	if _, err := creds.Get(); err != nil {
+		abort(err)
+	}
+
+	s3svc = s3.New(sess, awsCfg)
+}
+
+func abort(msg error) {
+	say(msg.Error())
+	os.Exit(SetupFailed)
+}
+
 func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	opts = new(options)
+	oldCfgFile := opts.cfgFile
+	if err := opts.restore(opts.cfgFile); err != nil {
+		abort(err)
+	}
 	processCmdLineFlags(opts)
+	if opts.cfgFile != oldCfgFile { // we were given a different config file, use that instead.
+		if err := opts.restore(opts.cfgFile); err != nil {
+			abort(err)
+		}
+	}
+	if opts.saveCfg {
+		if err := opts.dump(opts.cfgFile); err != nil {
+			abort(err)
+		}
+	}
 	appEnv = "production"
 	say = loggerGen()
+	initAWSClient()
 }

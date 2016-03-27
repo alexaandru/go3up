@@ -2,13 +2,13 @@ build:
 	@go build
 
 test:
-	@go test ./...
+	@AWS_SECRET_ACCESS_KEY=secret AWS_ACCESS_KEY_ID=secret go test ./...
 
 run: build
 	@./go3up -bucket="s3.ungur.ro" -source=test/output -cachefile=test/.go3up.txt
 
 cover:
-	@go test -coverprofile=coverage.out
+	@AWS_SECRET_ACCESS_KEY=secret AWS_ACCESS_KEY_ID=secret go test -coverprofile=coverage.out
 	@go tool cover -html=coverage.out
 
 clean:

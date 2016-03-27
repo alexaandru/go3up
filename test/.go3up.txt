@@ -1,0 +1,2 @@
+barbaz.txt:dac2e8bd758efb58a30f9fcd7ac28b1b
+foobar.html:01677e4c0ae5468b9b8b823487f14524

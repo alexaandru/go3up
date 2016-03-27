@@ -1,23 +1,25 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/base64"
+	"compress/gzip"
+	"flag"
 	"fmt"
+	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/alexaandru/utils"
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 // Exit codes
 const (
 	Success = iota
+	SetupFailed
 	S3AuthError
 	CmdLineOptionError
 	CachingFailure
@@ -31,9 +33,9 @@ type uploader func(*sourceFile) error
 
 // filesLists returns both the current files list as well as the difference from the old (cached) files list.
 func filesLists() (current utils.FileHashes, diff []string) {
-	current = utils.FileHashesNew(opts.source)
+	current = utils.FileHashesNew(opts.Source)
 	old := utils.FileHashes{}
-	old.Load(opts.cacheFile)
+	old.Load(opts.CacheFile)
 	diff = current.Diff(old)
 
 	return
@@ -80,8 +82,7 @@ func upload(id string, fn uploader, uploads chan *sourceFile, rejected *syncedli
 	}
 }
 
-// Generate an S3 put func. It holds the bucket in a closure.
-// FIXME: For some (all?) errors, we should re-initialize the bucket before retrying.
+// Generate an S3 upload func. It holds the bucket in a closure.
 func s3putGen() (up uploader, err error) {
 	if appEnv == "test" {
 		return func(src *sourceFile) error {
@@ -90,38 +91,56 @@ func s3putGen() (up uploader, err error) {
 		}, nil
 	}
 
-	auth, err := aws.EnvAuth()
-	if err != nil {
-		return
-	}
-
-	bucket := s3.New(auth, aws.Regions[opts.region]).Bucket(opts.bucketName)
 	return func(src *sourceFile) (err error) {
-		var body []byte
-		body, err = src.body()
+		f, err := os.Open(filepath.Join(opts.Source, src.fname))
 		if err != nil {
-			// If we can't read the file, there's no point to retry.
-			src.attempts = maxTries
-			return
+			return err
 		}
-		if opts.md5verify {
-			digest := md5.New()
-			_, err := digest.Write(body)
-			if err != nil {
-				panic(err)
-			}
-			md5sum := base64.StdEncoding.EncodeToString(digest.Sum(nil))
-			hdrs := headersDef{}
-			hdrs[ContentMD5] = md5sum
-			src.hdrs.merge(hdrs)
+
+		var r io.Reader = f
+		cacheControl, contentEnc, contentType, sse := src.getHeader(CacheControl), src.getHeader(ContentEncoding),
+			betterMime(src.fname), src.getHeader(Encryption)
+		if src.gzip {
+			rr, w := io.Pipe()
+			wz := gzip.NewWriter(w)
+			go func() {
+				// FIXME: We need a better way to handle these.
+				if _, err2 := io.Copy(wz, f); err2 != nil {
+					panic(fmt.Errorf("decryption error: %v", err2))
+				}
+				if err2 := wz.Close(); err2 != nil {
+					panic(fmt.Errorf("decryption error: %v", err2))
+				}
+				if err2 := w.Close(); err2 != nil {
+					panic(fmt.Errorf("decryption error: %v", err2))
+				}
+			}()
+
+			r = rr
 		}
-		return bucket.PutHeader(src.fname, body, src.hdrs, s3.PublicRead)
+
+		u := s3manager.NewUploader(sess, func(opts *s3manager.Uploader) {
+			opts.S3 = s3svc
+			opts.LeavePartsOnError = false
+		})
+		_, err = u.Upload(&s3manager.UploadInput{
+			Key:                  &src.fname,
+			Body:                 r,
+			Bucket:               &opts.BucketName,
+			ContentType:          &contentType,
+			ContentEncoding:      contentEnc,
+			CacheControl:         cacheControl,
+			ServerSideEncryption: sse,
+		})
+
+		return err
 	}, nil
 }
 
 func main() {
 	if err := validateCmdLineFlags(opts); err != nil {
-		fmt.Printf("Commandline flags error: %s. Please use 'go3up -h' for help.\n", err)
+		fmt.Printf("Required field missing: %v.\n\nUsage:\n", err)
+		flag.PrintDefaults()
 		os.Exit(CmdLineOptionError)
 	}
 
@@ -139,7 +158,7 @@ func main() {
 		say("Nothing to upload.", "Nothing to upload.\n")
 		os.Exit(Success)
 	}
-	say(fmt.Sprintf("There are %d files to be uploaded to '%s'", len(diff), opts.bucketName), "Uploading ")
+	say(fmt.Sprintf("There are %d files to be uploaded to '%s'", len(diff), opts.BucketName), "Uploading ")
 
 	if !opts.doUpload {
 		say("Skipping upload")
@@ -147,8 +166,8 @@ func main() {
 	}
 
 	wgUploads.Add(len(diff))
-	wgWorkers.Add(opts.workersCount)
-	for i := 0; i < opts.workersCount; i++ {
+	wgWorkers.Add(opts.WorkersCount)
+	for i := 0; i < opts.WorkersCount; i++ {
 		go upload(fmt.Sprintf("%d", i), s3put, uploads, rejected, wgUploads, wgWorkers)
 	}
 
@@ -174,7 +193,7 @@ Cache:
 	}
 
 	current = current.Reject(rejected.list)
-	if err := current.Dump(opts.cacheFile); err != nil {
+	if err := current.Dump(opts.CacheFile); err != nil {
 		fmt.Println("Caching failed: ", err)
 		os.Exit(CachingFailure)
 	}

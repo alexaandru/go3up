@@ -1,10 +1,8 @@
 language: go
 go:
-  - 1.3.3
+  - 1.6
 script: make test
 install:
-  - go get code.google.com/p/go.tools/cmd/cover
   - go get github.com/alexaandru/utils
-  - go get github.com/mitchellh/goamz/aws
-  - go get github.com/mitchellh/goamz/s3
+  - go get github.com/aws/aws-sdk-go
 

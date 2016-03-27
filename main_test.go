@@ -9,8 +9,8 @@ import (
 )
 
 func TestFilesList(t *testing.T) {
-	cacheFile := opts.cacheFile
-	opts.cacheFile = "test/.cacheEmpty.txt"
+	cacheFile := opts.CacheFile
+	opts.CacheFile = "test/.cacheEmpty.txt"
 	current, diff := filesLists()
 
 	if current["barbaz.txt"] != "dac2e8bd758efb58a30f9fcd7ac28b1b" ||
@@ -23,7 +23,7 @@ func TestFilesList(t *testing.T) {
 		t.Error("Expected diff to hold barbaz.txt and foobar.html")
 	}
 
-	opts.cacheFile = cacheFile
+	opts.CacheFile = cacheFile
 }
 
 func TestUpload(t *testing.T) {
@@ -146,13 +146,13 @@ func TestUploadRecoverable(t *testing.T) {
 }
 
 func TestIntegrationMain(t *testing.T) {
-	if _, err := os.Create(opts.cacheFile); err != nil {
+	if _, err := os.Create(opts.CacheFile); err != nil {
 		t.Fatal("Failed to truncate the cache file")
 	}
 
 	upFn, uploads := fakeUploaderGen()
 	_ = upFn
-	opts.region = "us-west-1"
+	opts.Region = "us-west-1"
 	opts.quiet = true
 	main()
 	opts.quiet = false

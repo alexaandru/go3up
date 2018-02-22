@@ -40,8 +40,8 @@ var say func(...string)
 // TODO: Make this configurable somehow, so that end users can provide their own mappings.
 var r = regexp.MustCompile
 var customHeadersDef = []pathToHeaders{
-	{r("index\\.html"), headers{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
-	{r("articole.*\\.html$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=86400"}},
+	{r("index\\.html"), headers{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},       // 1800
+	{r("articole.*\\.html$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=3600"}}, // 86400
 	{r("[^/]*\\.html$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=3600"}},
 	{r("\\.xml$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
 	{r("\\.ico$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},

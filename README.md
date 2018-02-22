@@ -1,6 +1,7 @@
 # Go S3 Uploader
 
 [![Build Status](https://travis-ci.org/alexaandru/go3up.png?branch=master)](https://travis-ci.org/alexaandru/go3up)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alexaandru/go3up)](https://goreportcard.com/report/github.com/alexaandru/go3up)
 [![GoDoc](https://godoc.org/github.com/alexaandru/go3up?status.png)](https://godoc.org/github.com/alexaandru/go3up)
 
 Go3Up (Go S3 Uploader) is a small S3 uploader tool.

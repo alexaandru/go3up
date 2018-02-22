@@ -76,5 +76,11 @@ func init() {
 	opts.CacheFile = "test/.go3up.txt"
 	appEnv = "test"
 	fakeBuffer := &bytes.Buffer{}
-	say = loggerGen(fakeBuffer)
+	sayLock := &sync.Mutex{}
+	sayFn := loggerGen(fakeBuffer)
+	say = func(msg ...string) {
+		sayLock.Lock()
+		defer sayLock.Unlock()
+		sayFn(msg...)
+	}
 }

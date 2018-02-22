@@ -1,8 +1,10 @@
 package main
 
 import (
+	"mime"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -54,7 +56,8 @@ func (h *headers) equal(other headers) bool {
 
 func newSourceFile(fname string) (sf *sourceFile) {
 	sf = &sourceFile{fname: fname, fpath: filepath.Join(opts.Source, fname)}
-	sf.hdrs = headers{ContentType: betterMime(fname)}
+	sf.hdrs = headers{ContentType: mime.TypeByExtension(strings.ToLower(filepath.Ext(fname)))}
+
 	for _, hdrs := range customHeadersDef {
 		if hdrs.pathPattern.MatchString(fname) {
 			sf.hdrs.merge(hdrs.headers)

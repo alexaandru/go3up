@@ -51,7 +51,7 @@ func TestNewSourceFile(t *testing.T) {
 	}
 
 	tests := map[string]string{
-		"articole/foobar.html": "86400",
+		"articole/foobar.html": "3600",
 		"articole/index.html":  "1800",
 		"index.html":           "1800",
 	}

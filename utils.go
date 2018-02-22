@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"mime"
-	"path/filepath"
 	"strings"
 )
 
@@ -61,16 +59,4 @@ func msg(msgs ...string) string {
 	}
 
 	return ""
-}
-
-// betterMime wrapps mime.TypeByExtension and tries to handle a few edge cases.
-func betterMime(fname string) (mt string) {
-	ext := strings.ToLower(filepath.Ext(fname))
-	if mt = mime.TypeByExtension(ext); mt != "" {
-		return
-	} else if ext == ".ttf" {
-		mt = "binary/octet-stream"
-	}
-
-	return
 }

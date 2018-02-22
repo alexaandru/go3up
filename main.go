@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"mime"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -99,7 +101,7 @@ func s3putGen() (up uploader, err error) {
 
 		var r io.Reader = f
 		cacheControl, contentEnc, contentType, sse := src.getHeader(CacheControl), src.getHeader(ContentEncoding),
-			betterMime(src.fname), src.getHeader(Encryption)
+			mime.TypeByExtension(strings.ToLower(filepath.Ext(src.fname))), src.getHeader(Encryption)
 		if src.gzip {
 			rr, w := io.Pipe()
 			wz := gzip.NewWriter(w)

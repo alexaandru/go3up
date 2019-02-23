@@ -1,17 +1,5 @@
 language: go
-
-go:
-  - 1.9.4
-
-before_install:
-  - go get -t -v ./...
-
 script:
   - make test
-
-install:
-  - go get github.com/alexaandru/utils
-  - go get github.com/aws/aws-sdk-go
-
 after_success:
   - bash <(curl -s https://codecov.io/bash)

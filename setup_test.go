@@ -70,6 +70,11 @@ func fakeUploaderGen(opts ...int) (fn uploader, out *([]*sourceFile)) {
 	return
 }
 
+var _ = func() bool {
+	testing.Init()
+	return true
+}()
+
 func init() {
 	opts.BucketName = "example_bucket"
 	opts.Source = "test/output"

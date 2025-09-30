@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"regexp"
 	"runtime"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 var opts = &options{
@@ -18,8 +20,8 @@ var opts = &options{
 	CacheFile:    ".go3up.txt",
 	doUpload:     true,
 	doCache:      true,
-	Region:       os.Getenv("AWS_DEFAULT_REGION"),
-	Profile:      os.Getenv("AWS_DEFAULT_PROFILE"),
+	Region:       os.Getenv("AWS_REGION"),
+	Profile:      os.Getenv("AWS_PROFILE"),
 	cfgFile:      ".go3up.json",
 }
 
@@ -33,8 +35,8 @@ var say func(...string)
 // TODO: Make this configurable somehow, so that end users can provide their own mappings.
 var r = regexp.MustCompile
 var customHeadersDef = []pathToHeaders{
-	{r("index\\.html"), headers{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},       // 1800
-	{r("articole.*\\.html$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=3600"}}, // 86400
+	{r("index\\.html"), headers{ContentEncoding: "gzip", CacheControl: "max-age=1800"}}, {r("index\\.html"), headers{ContentEncoding: "gzip", CacheControl: "max-age=1800"}}, // 1800.
+	{r("articole.*\\.html$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=3600"}}, {r("articole.*\\.html$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=3600"}}, // 86400.
 	{r("[^/]*\\.html$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=3600"}},
 	{r("\\.xml$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=1800"}},
 	{r("\\.ico$"), headers{ContentEncoding: "gzip", CacheControl: "max-age=31536000"}},
@@ -62,7 +64,7 @@ func processCmdLineFlags(opts *options) {
 	flag.Parse()
 }
 
-// validateCmdLineFlags validates some of the flags, mostly paths. Defers actual validation to validateCmdLineFlag()
+// validateCmdLineFlags validates some of the flags, mostly paths. Defers actual validation to validateCmdLineFlag().
 func validateCmdLineFlags(opts *options) (err error) {
 	flags := map[string]string{
 		"Bucket Name": opts.BucketName,
@@ -74,6 +76,7 @@ func validateCmdLineFlags(opts *options) (err error) {
 			return
 		}
 	}
+
 	return
 }
 
@@ -87,13 +90,27 @@ func validateCmdLineFlag(label, val string) (err error) {
 	default:
 		_, err = os.Stat(val)
 	}
+
 	return
 }
 
 func initAWSClient() {
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(opts.Region))
+	os.Setenv("AWS_PROFILE", opts.Profile)
+
+	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(opts.Region), config.WithSharedConfigProfile(opts.Profile))
 	if err != nil {
 		panic(err)
+	}
+
+	if opts.verbose {
+		stsClient := sts.NewFromConfig(cfg)
+
+		identity, err := stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("AWS Identity:", *identity.Arn)
 	}
 
 	s3svc = s3.NewFromConfig(cfg)
@@ -111,7 +128,8 @@ func init() {
 	}
 
 	processCmdLineFlags(opts)
-	if opts.cfgFile != oldCfgFile { // we were given a different config file, use that instead.
+
+	if opts.cfgFile != oldCfgFile { // We were given a different config file, use that instead.
 		if err := opts.restore(opts.cfgFile); err != nil {
 			abort(err)
 		}

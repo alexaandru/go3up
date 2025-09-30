@@ -28,12 +28,12 @@ type pathToHeaders struct {
 }
 
 type sourceFile struct {
-	fname,
-	fpath string
 	hdrs     headers
-	gzip     bool
+	fname    string
+	fpath    string
 	attempts int
 	sync.Mutex
+	gzip bool
 }
 
 func (h *headers) merge(other headers) {
@@ -44,6 +44,7 @@ func (h *headers) equal(other headers) bool {
 	if len(*h) != len(other) {
 		return false
 	}
+
 	for k, val1 := range *h {
 		if val2 := other[k]; val1 != val2 {
 			return false
@@ -63,6 +64,7 @@ func newSourceFile(fname string) (sf *sourceFile) {
 			break
 		}
 	}
+
 	sf.gzip = (sf.hdrs[ContentEncoding] == "gzip")
 
 	return

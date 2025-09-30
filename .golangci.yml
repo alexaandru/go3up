@@ -1,0 +1,222 @@
+version: "2"
+linters:
+  default: all
+  disable:
+    - depguard
+    # - embeddedstructfieldcheck
+    - err113 # TODO
+    - exhaustruct
+    # - godox
+    - noinlineerr # we want inline errs, why not?
+    - nonamedreturns # we want named returns
+    - paralleltest # Lots of t.Tempdir, t.Setenv, can't use it
+    # - testpackage
+    - wrapcheck # TODO
+    - wsl # deprecated
+  settings:
+    cyclop:
+      max-complexity: 20
+    #   package-average:
+    decorder:
+      disable-dec-num-check: true
+      disable-dec-order-check: false
+    errcheck:
+      #severity: warn
+      disable-default-exclusions: false
+      check-type-assertions: true
+      check-blank: true
+    errchkjson:
+      #severity: Warn
+      report-no-exported: true
+    errorlint:
+      asserts: true
+    exhaustive:
+      check:
+        - switch
+        - map
+      default-signifies-exhaustive: true
+    forbidigo:
+      forbid:
+        - pattern: "context.Background"
+          msg: "Use t.Context() in tests instead of context.Background()"
+        - pattern: "context.TODO"
+          msg: "Use t.Context() in tests instead of context.TODO()"
+    funlen:
+      lines: 62
+      # statements:
+      ignore-comments: true
+    # gocognit:
+    #   min-complexity:
+    goconst:
+      min-occurrences: 6
+    gocritic:
+      disabled-checks:
+        - commentFormatting
+        - exposedSyncMutex
+        - commentedOutCode
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+        - experimental
+        - opinionated
+      settings:
+        captLocal:
+          paramsOnly: false
+        elseif:
+          skipBalanced: true
+        hugeParam:
+          sizeThreshold: 129
+        nestingReduce:
+          bodyWidth: 5
+        rangeExprCopy:
+          sizeThreshold: 512
+          skipTestFuncs: true
+        rangeValCopy:
+          sizeThreshold: 201
+          skipTestFuncs: true
+        truncateCmp:
+          skipArchDependent: true
+        underef:
+          skipRecvDeref: true
+    # gocyclo:
+    #   min-complexity:
+    godot:
+      scope: all
+      exclude:
+        - ^ HAS_.*
+        - ^ \[.*\]$
+      capital: true
+    gosec:
+      config:
+        G302: "0640"
+        G306: "0640"
+    govet:
+      enable-all: true
+      settings:
+        shadow:
+          strict: true
+    ireturn:
+      allow:
+        - empty
+        - error
+        - stdlib
+        - generic
+        - valkey.Client
+        - valkey-go.Client
+    lll:
+      # line-length:
+      tab-width: 1
+    maintidx:
+      under: 10
+    makezero:
+      always: false
+    mnd:
+      ignored-numbers: ["2"]
+    nakedret:
+      max-func-lines: 64
+    nestif:
+      min-complexity: 5
+    nlreturn:
+      block-size: 2
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
+    predeclared:
+      qualified-name: false
+    revive:
+      rules: []
+    tagliatelle:
+      case:
+        rules:
+          json: pascal
+    testpackage:
+      skip-regexp: (export|internal)_test\.go
+    thelper:
+      test:
+        first: true
+        name: true
+        begin: true
+      benchmark:
+        first: true
+        name: true
+        begin: true
+      tb:
+        first: true
+        name: true
+        begin: true
+    unparam:
+      check-exported: true
+    unused:
+      field-writes-are-uses: true
+      post-statements-are-reads: false
+      exported-fields-are-used: false
+      parameters-are-used: true
+      local-variables-are-used: false
+      generated-is-used: false
+    varnamelen:
+      max-distance: 25
+      min-name-length: 2
+      check-receiver: false
+      check-return: true
+      check-type-param: true
+      ignore-names:
+        - err
+        - db
+        - t0
+        - t1
+        - t2
+        - tc
+        - T
+      ignore-type-assert-ok: true
+      ignore-map-index-ok: true
+      ignore-chan-recv-ok: true
+      ignore-decls:
+        - i int
+        - i uint32
+        - j int
+        - t testing.T
+        - b testing.B
+        - T any
+        - r io.Reader
+        - w io.Writer
+        - f *os.File
+        - g *errgroup.Group
+        - g errgroup.Group
+        - g sync.WaitGroup
+        - c Creds
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+  exclusions:
+    warn-unused: true
+    generated: strict
+    rules:
+      - linters:
+          - err113
+          - godot
+        path: _test\.go
+      - linters:
+          - forbidigo
+        text: Use t.Context
+        path-except: _test\.go
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  fix: true
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+output:
+  show-stats: true

@@ -23,6 +23,7 @@ func TestMsg(t *testing.T) {
 
 	verbose := opts.verbose
 	opts.verbose = true
+
 	if actual := msg("Foo", "bar", "baz"); actual != "Foo\n" {
 		t.Error("Expected Foo\\n got", actual)
 	}
@@ -30,14 +31,17 @@ func TestMsg(t *testing.T) {
 	quiet := opts.quiet
 	opts.quiet = true
 	opts.verbose = false
+
 	if actual := msg("Foo", "bar", "baz"); actual != "baz" {
 		t.Error("Expected baz got", actual)
 	}
+
 	if actual := msg(); actual != "" {
 		t.Error("Expected message to be blank, got", actual)
 	}
 
 	opts.quiet = false
+
 	if actual := msg("Foo", "bar", "baz"); actual != "bar" {
 		t.Error("Expected bar got", actual)
 	}

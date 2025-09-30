@@ -53,6 +53,7 @@ func msg(msgs ...string) string {
 		if len(msgs) > 2 {
 			return msgs[2]
 		}
+
 		return ""
 	} else if len(msgs) > 1 {
 		return msgs[1]

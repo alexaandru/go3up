@@ -58,6 +58,7 @@ func TestNewSourceFile(t *testing.T) {
 
 	for fname, ttl := range tests {
 		sf = newSourceFile(fname)
+
 		expectedHdrs = headers{ContentType: "text/html; charset=utf-8", ContentEncoding: "gzip", CacheControl: "max-age=" + ttl}
 		if !sf.hdrs.equal(expectedHdrs) {
 			t.Errorf("Expected hdrs to be set to %v got %v", expectedHdrs, sf.hdrs)
@@ -71,10 +72,12 @@ func TestSourceFileAttempted(t *testing.T) {
 	wg := new(sync.WaitGroup)
 
 	wg.Add(2)
+
 	go func() {
 		for range 1000 {
 			sf.recordAttempt()
 		}
+
 		wg.Done()
 	}()
 
@@ -82,6 +85,7 @@ func TestSourceFileAttempted(t *testing.T) {
 		for range 1000 {
 			sf.recordAttempt()
 		}
+
 		wg.Done()
 	}()
 

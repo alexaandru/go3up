@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -13,15 +13,20 @@ func TestSyncedListAdd(t *testing.T) {
 	expectedArr := make([]string, n)
 	wg := new(sync.WaitGroup)
 	wg.Add(n)
+
 	for i := range n {
-		expectedArr[i] = fmt.Sprintf("%d", i)
+		expectedArr[i] = strconv.Itoa(i)
 		go func(i int) {
 			defer wg.Done()
-			cl.add(fmt.Sprintf("%d", i))
+
+			cl.add(strconv.Itoa(i))
 		}(i)
 	}
+
 	wg.Wait()
+
 	expected := strings.Join(expectedArr, ":")
+
 	sort.Strings(cl.list)
 	actual := strings.Join(cl.list, ":")
 

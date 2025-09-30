@@ -55,12 +55,15 @@ func fakeUploaderGen(opts ...int) (fn uploader, out *([]*sourceFile)) {
 	out = &[]*sourceFile{}
 	fn = func(src *sourceFile) (err error) {
 		m.Lock()
+
 		*out = append(*out, src)
+
 		m.Unlock()
 
-		if errorKind == noError {
+		switch errorKind {
+		case noError:
 			return
-		} else if errorKind == recoverableError {
+		case recoverableError:
 			return errors.New("Something something. " + recoverableErrorsSuffixes[0])
 		}
 
@@ -86,6 +89,7 @@ func init() {
 	say = func(msg ...string) {
 		sayLock.Lock()
 		defer sayLock.Unlock()
+
 		sayFn(msg...)
 	}
 }

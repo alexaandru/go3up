@@ -1,19 +1,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"os"
 	"regexp"
 	"runtime"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
-	"github.com/aws/aws-sdk-go/aws/ec2metadata"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 var opts = &options{
@@ -29,10 +25,7 @@ var opts = &options{
 
 var appEnv string
 
-// s3 session.
-var sess = session.New()
-
-var s3svc *s3.S3
+var s3svc *s3.Client
 
 var say func(...string)
 
@@ -98,32 +91,12 @@ func validateCmdLineFlag(label, val string) (err error) {
 }
 
 func initAWSClient() {
-	creds := credentials.NewChainCredentials(
-		[]credentials.Provider{
-			&credentials.SharedCredentialsProvider{Profile: opts.Profile},
-			&ec2rolecreds.EC2RoleProvider{Client: ec2metadata.New(sess)},
-			&credentials.EnvProvider{},
-		})
-
-	retries := 2
-	awsCfg := &aws.Config{
-		Credentials: creds,
-		Region:      &opts.Region,
-		MaxRetries:  &retries,
+	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(opts.Region))
+	if err != nil {
+		panic(err)
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			// If we got to this, then getting the credentials failed - nothing else
-			// can raise a panic in here.
-			abort(fmt.Errorf("Unable to initialize AWS credentials - please check environment."))
-		}
-	}()
-	if _, err := creds.Get(); err != nil {
-		abort(err)
-	}
-
-	s3svc = s3.New(sess, awsCfg)
+	s3svc = s3.NewFromConfig(cfg)
 }
 
 func abort(msg error) {
@@ -136,18 +109,22 @@ func init() {
 	if err := opts.restore(opts.cfgFile); err != nil {
 		abort(err)
 	}
+
 	processCmdLineFlags(opts)
 	if opts.cfgFile != oldCfgFile { // we were given a different config file, use that instead.
 		if err := opts.restore(opts.cfgFile); err != nil {
 			abort(err)
 		}
 	}
+
 	if opts.saveCfg {
 		if err := opts.dump(opts.cfgFile); err != nil {
 			abort(err)
 		}
 	}
+
 	appEnv = "production"
 	say = loggerGen()
+
 	initAWSClient()
 }

@@ -72,14 +72,14 @@ func TestSourceFileAttempted(t *testing.T) {
 
 	wg.Add(2)
 	go func() {
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			sf.recordAttempt()
 		}
 		wg.Done()
 	}()
 
 	go func() {
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			sf.recordAttempt()
 		}
 		wg.Done()

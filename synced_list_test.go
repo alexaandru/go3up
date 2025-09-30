@@ -13,7 +13,7 @@ func TestSyncedListAdd(t *testing.T) {
 	expectedArr := make([]string, n)
 	wg := new(sync.WaitGroup)
 	wg.Add(n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		expectedArr[i] = fmt.Sprintf("%d", i)
 		go func(i int) {
 			defer wg.Done()

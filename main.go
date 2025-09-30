@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -15,7 +16,9 @@ import (
 	"time"
 
 	"github.com/alexaandru/utils"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // Exit codes
@@ -49,7 +52,6 @@ func upload(id string, fn uploader, uploads chan *sourceFile, rejected *syncedli
 	defer wgWorkers.Done()
 
 	for src := range uploads {
-		src := src
 
 		if opts.dryRun {
 			say("Pretending to upload "+src.fname, ".")
@@ -100,7 +102,7 @@ func s3putGen() (up uploader, err error) {
 		}
 
 		var r io.Reader = f
-		cacheControl, contentEnc, contentType, sse := src.getHeader(CacheControl), src.getHeader(ContentEncoding),
+		cacheControl, contentEnc, contentType, _ := src.getHeader(CacheControl), src.getHeader(ContentEncoding),
 			mime.TypeByExtension(strings.ToLower(filepath.Ext(src.fname))), src.getHeader(Encryption)
 		if src.gzip {
 			rr, w := io.Pipe()
@@ -121,18 +123,18 @@ func s3putGen() (up uploader, err error) {
 			r = rr
 		}
 
-		u := s3manager.NewUploader(sess, func(opts *s3manager.Uploader) {
+		u := manager.NewUploader(s3svc, func(opts *manager.Uploader) {
 			opts.S3 = s3svc
 			opts.LeavePartsOnError = false
 		})
-		_, err = u.Upload(&s3manager.UploadInput{
+		_, err = u.Upload(context.TODO(), &s3.PutObjectInput{
 			Key:                  &src.fname,
 			Body:                 r,
 			Bucket:               &opts.BucketName,
 			ContentType:          &contentType,
 			ContentEncoding:      contentEnc,
 			CacheControl:         cacheControl,
-			ServerSideEncryption: sse,
+			ServerSideEncryption: types.ServerSideEncryptionAes256,
 		})
 
 		return err

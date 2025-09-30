@@ -1,6 +1,7 @@
 package main
 
 import (
+	"maps"
 	"mime"
 	"path/filepath"
 	"regexp"
@@ -36,9 +37,7 @@ type sourceFile struct {
 }
 
 func (h *headers) merge(other headers) {
-	for key, val := range other {
-		(*h)[key] = val
-	}
+	maps.Copy((*h), other)
 }
 
 func (h *headers) equal(other headers) bool {

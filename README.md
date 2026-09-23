@@ -2,7 +2,6 @@
 
 [![Test](https://github.com/alexaandru/go3up/actions/workflows/ci.yml/badge.svg)](https://github.com/alexaandru/go3up/actions/workflows/ci.yml)
 ![Coverage](coverage-badge.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/alexaandru/go3up)](https://goreportcard.com/report/github.com/alexaandru/go3up)
 [![GoDoc](https://godoc.org/github.com/alexaandru/go3up?status.png)](https://godoc.org/github.com/alexaandru/go3up)
 
 Go3Up (Go S3 Uploader) is a small S3 uploader, usable both as a CLI tool and as a Go library.

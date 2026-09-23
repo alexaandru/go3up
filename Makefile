@@ -54,7 +54,7 @@ tflint:
 	@go tool -modfile=tools/go.mod tflint -f compact --chdir deploy --recursive
 
 actionlint:
-	@go tool -modfile=tools/go.mod actionlint -shellcheck="shellcheck -f json $(SHELLCHECK_ARGS)"
+	@go tool -modfile=tools/go.mod actionlint -shellcheck="shellcheck $(SHELLCHECK_ARGS)"
 
 tfdocs:
 	@go tool -modfile=tools/go.mod terraform-docs md deploy > deploy/README.md

@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+jobs:
+  Test:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}-test
+      cancel-in-progress: true
+    timeout-minutes: 2
+    steps:
+      - run: git clone --depth 1 ${{ github.server_url }}/${{ github.repository }} .
+      - run: |
+          go_version=$(go version)
+          echo "::notice title=Go Version::${go_version}"
+      # Needed until https://github.com/golang/go/issues/75031 is fixed.
+      - run: go env -w GOTOOLCHAIN=go1.27.1+auto
+      - run: make test
+  Lint:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}-lint
+      cancel-in-progress: true
+    timeout-minutes: 4
+    steps:
+      - run: git clone --depth 1 ${{ github.server_url }}/${{ github.repository }} .
+      - uses: actions/cache@v5
+        with:
+          key: golangci-lint-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+      # Needed until https://github.com/golang/go/issues/75031 is fixed.
+      - run: go env -w GOTOOLCHAIN=go1.27.1+auto
+      - run: make lint

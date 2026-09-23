@@ -46,8 +46,8 @@ func TestRun(t *testing.T) {
 	t.Run("bad cfgfile", func(t *testing.T) {
 		args := []string{"-cfgfile", t.TempDir()} //  a directory, not a JSON file
 
-		if code := run(args, io.Discard); code != SetupFailed {
-			t.Error("Expected SetupFailed, got", code)
+		if code := run(args, io.Discard); code != CmdLineOptionError {
+			t.Error("Expected CmdLineOptionError, got", code)
 		}
 	})
 

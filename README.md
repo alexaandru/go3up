@@ -74,6 +74,12 @@ Everything is configured through functional options — there is no global state
 - `WithHeaderRules(rules...)` — custom path-pattern → headers mappings (Cache-Control, gzip, ...).
 - `WithRecoverableErrors(suffixes...)` — customize which S3 errors are retried (with exponential backoff).
 - `WithRetryBaseDelay(d)` — base delay for the retry backoff.
+- `WithConfigFile(path)` — load settings from a JSON config file. Fields already set by other
+  options are left alone (explicit options always win, regardless of order), and relative
+  `Source`/`CacheFile` paths are resolved against the config file's directory.
+
+Precedence is: explicit options > config file > built-in defaults (which include the
+`AWS_REGION`/`AWS_PROFILE` environment variables).
 
 The JSON config file format is also available to library consumers via `go3up.LoadConfig`,
 `Config.Save` and `Config.Options()` (which converts a loaded config into client options).

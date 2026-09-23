@@ -29,54 +29,85 @@ func main() {
 func run(args []string, out io.Writer) int {
 	cfgFile := defaultCfgFile
 
-	cfg, err := go3up.LoadConfig(cfgFile)
-	if err != nil {
-		return fail(out, SetupFailed, "Failed to load config:", err)
-	}
-
-	var dry, verbose, quiet, doUpload, doCache, save bool
+	var (
+		dry, verbose, quiet, doUpload, doCache, save, encrypt bool
+		bucket, source, cacheFile, region, profile            string
+		workers                                               int
+	)
 
 	fs := flag.NewFlagSet("go3up", flag.ContinueOnError)
 	fs.SetOutput(out)
 
-	fs.IntVar(&cfg.WorkersCount, "workers", cfg.WorkersCount, "No. of workers to use for uploads")
-	fs.StringVar(&cfg.BucketName, "bucket", cfg.BucketName, "Bucket to upload files to")
-	fs.StringVar(&cfg.Source, "source", cfg.Source, "Source folder for files to be uploaded")
-	fs.StringVar(&cfg.CacheFile, "cachefile", cfg.CacheFile, "Location of the cache file")
-	fs.StringVar(&cfg.Region, "region", cfg.Region, "AWS region")
-	fs.StringVar(&cfg.Profile, "profile", cfg.Profile, "AWS shared profile")
+	fs.IntVar(&workers, "workers", 0, "No. of workers to use for uploads")
+	fs.StringVar(&bucket, "bucket", "", "Bucket to upload files to")
+	fs.StringVar(&source, "source", "", "Source folder for files to be uploaded")
+	fs.StringVar(&cacheFile, "cachefile", "", "Location of the cache file")
+	fs.StringVar(&region, "region", "", "AWS region")
+	fs.StringVar(&profile, "profile", "", "AWS shared profile")
 	fs.StringVar(&cfgFile, "cfgfile", cfgFile, "Config file location")
 	fs.BoolVar(&dry, "dry", false, "Dry run (do not upload/update cache)")
 	fs.BoolVar(&verbose, "verbose", false, "Print the name of the files as they are uploaded")
 	fs.BoolVar(&quiet, "quiet", false, "Print only warnings and/or errors")
 	fs.BoolVar(&doUpload, "upload", true, "Do perform an upload")
 	fs.BoolVar(&doCache, "cache", true, "Do update the cache")
-	fs.BoolVar(&cfg.Encrypt, "encrypt", cfg.Encrypt, "Encrypt files on server side")
+	fs.BoolVar(&encrypt, "encrypt", false, "Encrypt files on server side")
 	fs.BoolVar(&save, "save", false, "Saves the current commandline options to a config file")
 
-	if err = fs.Parse(args); err != nil {
+	if err := fs.Parse(args); err != nil {
 		return CmdLineOptionError
 	}
 
-	if cfgFile != defaultCfgFile { // We were given a different config file, use that instead.
-		if cfg, err = go3up.LoadConfig(cfgFile); err != nil {
-			return fail(out, SetupFailed, "Failed to load config:", err)
-		}
-	}
+	// Explicitly set flags override the config file; the rest of the
+	// settings come from the file, then from built-in defaults.
+	set := map[string]bool{}
 
-	if save {
-		if err = cfg.Save(cfgFile); err != nil {
-			return fail(out, SetupFailed, "Failed to save config:", err)
-		}
-	}
+	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
 
-	opts := append(cfg.Options(),
+	opts := []go3up.Option{
+		go3up.WithConfigFile(cfgFile),
 		go3up.WithDryRun(dry),
 		go3up.WithVerbose(verbose),
 		go3up.WithQuiet(quiet),
 		go3up.WithUpload(doUpload),
 		go3up.WithCache(doCache),
-	)
+	}
+
+	if set["workers"] {
+		opts = append(opts, go3up.WithWorkers(workers))
+	}
+
+	if set["bucket"] {
+		opts = append(opts, go3up.WithBucket(bucket))
+	}
+
+	if set["source"] {
+		opts = append(opts, go3up.WithSource(source))
+	}
+
+	if set["cachefile"] {
+		opts = append(opts, go3up.WithCacheFile(cacheFile))
+	}
+
+	if set["region"] {
+		opts = append(opts, go3up.WithRegion(region))
+	}
+
+	if set["profile"] {
+		opts = append(opts, go3up.WithProfile(profile))
+	}
+
+	if set["encrypt"] {
+		opts = append(opts, go3up.WithEncryption(encrypt))
+	}
+
+	if save {
+		if err := saveConfig(cfgFile, set, go3up.Config{
+			BucketName: bucket, Source: source, CacheFile: cacheFile,
+			Region: region, Profile: profile, WorkersCount: workers, Encrypt: encrypt,
+		}); err != nil {
+			return fail(out, SetupFailed, "Failed to save config:", err)
+		}
+	}
 
 	client, err := go3up.New(opts...)
 	if err != nil {
@@ -102,6 +133,45 @@ func run(args []string, out io.Writer) int {
 	}
 
 	return Success
+}
+
+// saveConfig writes the merged configuration (file values overlaid with
+// the explicitly set flags) back to the config file.
+func saveConfig(cfgFile string, set map[string]bool, flags go3up.Config) error {
+	cfg, err := go3up.LoadConfig(cfgFile)
+	if err != nil {
+		return err
+	}
+
+	if set["bucket"] {
+		cfg.BucketName = flags.BucketName
+	}
+
+	if set["source"] {
+		cfg.Source = flags.Source
+	}
+
+	if set["cachefile"] {
+		cfg.CacheFile = flags.CacheFile
+	}
+
+	if set["region"] {
+		cfg.Region = flags.Region
+	}
+
+	if set["profile"] {
+		cfg.Profile = flags.Profile
+	}
+
+	if set["workers"] {
+		cfg.WorkersCount = flags.WorkersCount
+	}
+
+	if set["encrypt"] {
+		cfg.Encrypt = flags.Encrypt
+	}
+
+	return cfg.Save(cfgFile)
 }
 
 // fail prints msg to out and returns the given exit code, or SetupFailed if printing failed.

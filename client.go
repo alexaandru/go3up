@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 
@@ -50,6 +51,7 @@ type Client struct {
 	newSTS            func(aws.Config) stsAPI
 	uploader          uploader
 	logger            Logger
+	configErr         error
 	bucketName        string
 	source            string
 	cacheFile         string
@@ -118,14 +120,67 @@ func WithRecoverableErrors(suffixes ...string) Option {
 	return func(c *Client) { c.recoverableErrors = suffixes }
 }
 
-// New creates a Client with sane defaults, applies the given options and validates the result.
+// WithConfigFile loads settings from the given config file. Fields
+// already set by other options are left alone, so explicit options
+// always win over the file regardless of option order. Relative
+// Source/CacheFile paths are resolved against the config file's
+// directory. A missing file is not an error; other load failures
+// surface from New.
+func WithConfigFile(fname string) Option {
+	return func(c *Client) { //nolint:varnamelen // consistent with the other options
+		cfg, err := LoadConfig(fname)
+		if err != nil {
+			c.configErr = err
+			return
+		}
+
+		dir := filepath.Dir(fname)
+
+		if c.bucketName == "" {
+			c.bucketName = cfg.BucketName
+		}
+
+		if c.source == "" {
+			c.source = resolvePath(dir, cfg.Source)
+		}
+
+		if c.cacheFile == "" {
+			c.cacheFile = resolvePath(dir, cfg.CacheFile)
+		}
+
+		if c.region == "" {
+			c.region = cfg.Region
+		}
+
+		if c.profile == "" {
+			c.profile = cfg.Profile
+		}
+
+		if c.workersCount == 0 {
+			c.workersCount = cfg.WorkersCount
+		}
+
+		if !c.encrypt {
+			c.encrypt = cfg.Encrypt
+		}
+	}
+}
+
+// resolvePath joins path to dir if relative; empty stays empty.
+func resolvePath(dir, path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return path
+	}
+
+	return filepath.Join(dir, path)
+}
+
+// New creates a Client, applies the given options, fills any remaining
+// gaps with sane defaults and validates the result. Explicit options
+// take precedence over WithConfigFile values, which in turn take
+// precedence over the built-in defaults.
 func New(opts ...Option) (*Client, error) {
-	c := &Client{
-		workersCount:      runtime.NumCPU() * 2,
-		source:            "output",
-		cacheFile:         ".go3up.txt",
-		region:            os.Getenv("AWS_REGION"),
-		profile:           os.Getenv("AWS_PROFILE"),
+	c := &Client{ //nolint:varnamelen // ok
 		doUpload:          true,
 		doCache:           true,
 		retryBaseDelay:    100 * time.Millisecond, //nolint:mnd // ok
@@ -141,11 +196,42 @@ func New(opts ...Option) (*Client, error) {
 		opt(c)
 	}
 
+	if c.configErr != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidConfig, c.configErr)
+	}
+
+	c.setDefaults()
+
 	if err := c.validate(); err != nil {
 		return nil, err
 	}
 
 	return c, nil
+}
+
+// setDefaults fills the fields still unset after all options were
+// applied: built-in paths, environment-based AWS settings and the
+// worker count.
+func (c *Client) setDefaults() {
+	if c.source == "" {
+		c.source = "output"
+	}
+
+	if c.cacheFile == "" {
+		c.cacheFile = ".go3up.txt"
+	}
+
+	if c.region == "" {
+		c.region = os.Getenv("AWS_REGION")
+	}
+
+	if c.profile == "" {
+		c.profile = os.Getenv("AWS_PROFILE")
+	}
+
+	if c.workersCount < 1 {
+		c.workersCount = runtime.NumCPU() * 2
+	}
 }
 
 // validate checks that the mandatory settings are present and the paths exist.

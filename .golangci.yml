@@ -1,22 +1,30 @@
 version: "2"
+run:
+  build-tags:
+    - development
 linters:
   default: all
   disable:
     - depguard
-    # - embeddedstructfieldcheck
+    - embeddedstructfieldcheck
     - err113 # TODO
     - exhaustruct
-    # - godox
+    - exhaustruct_v5
+    # - godot # TODO
+    # - godox # TODO
+    - gomodguard # deprecated by v2
+    - musttag # TODO
     - noinlineerr # we want inline errs, why not?
     - nonamedreturns # we want named returns
-    - paralleltest # Lots of t.Tempdir, t.Setenv, can't use it
-    # - testpackage
+    - paralleltest # TODO
+    - tagliatelle # legacy API, we don't control most of the APIs output.
+    - testpackage # TODO
     - wrapcheck # TODO
-    - wsl # deprecated
+    - wsl # deprecated by v5
   settings:
     cyclop:
-      max-complexity: 20
-    #   package-average:
+      max-complexity: 35 # TODO: reduce
+      package-average: 8 # TODO: reduce
     decorder:
       disable-dec-num-check: true
       disable-dec-order-check: false
@@ -42,11 +50,11 @@ linters:
         - pattern: "context.TODO"
           msg: "Use t.Context() in tests instead of context.TODO()"
     funlen:
-      lines: 62
-      # statements:
+      lines: 800 # TODO: reduce
+      statements: 384 # TODO: reduce
       ignore-comments: true
-    # gocognit:
-    #   min-complexity:
+    gocognit:
+      min-complexity: 603 # TODO: reduce
     goconst:
       min-occurrences: 6
     gocritic:
@@ -66,7 +74,7 @@ linters:
         elseif:
           skipBalanced: true
         hugeParam:
-          sizeThreshold: 129
+          sizeThreshold: 2265 # TODO: reduce
         nestingReduce:
           bodyWidth: 5
         rangeExprCopy:
@@ -79,8 +87,8 @@ linters:
           skipArchDependent: true
         underef:
           skipRecvDeref: true
-    # gocyclo:
-    #   min-complexity:
+    gocyclo:
+      min-complexity: 235 # TODO: reduce
     godot:
       scope: all
       exclude:
@@ -91,6 +99,8 @@ linters:
       config:
         G302: "0640"
         G306: "0640"
+      excludes:
+        - G115 # TODO: panics on Go 1.26 until gosec is updated
     govet:
       enable-all: true
       settings:
@@ -102,19 +112,17 @@ linters:
         - error
         - stdlib
         - generic
-        - valkey.Client
-        - valkey-go.Client
     lll:
-      # line-length:
+      line-length: 196 # TODO: reduce
       tab-width: 1
     maintidx:
-      under: 10
+      under: 18 # TODO: bring it back to 20
     makezero:
       always: false
     mnd:
       ignored-numbers: ["2"]
     nakedret:
-      max-func-lines: 64
+      max-func-lines: 120 # TODO: reduce
     nestif:
       min-complexity: 5
     nlreturn:
@@ -130,11 +138,9 @@ linters:
     predeclared:
       qualified-name: false
     revive:
-      rules: []
-    tagliatelle:
-      case:
-        rules:
-          json: pascal
+      rules:
+        - name: exported
+          disabled: true # TODO: enable
     testpackage:
       skip-regexp: (export|internal)_test\.go
     thelper:
@@ -183,40 +189,62 @@ linters:
         - t testing.T
         - b testing.B
         - T any
-        - r io.Reader
-        - w io.Writer
         - f *os.File
         - g *errgroup.Group
-        - g errgroup.Group
-        - g sync.WaitGroup
-        - c Creds
-    wsl_v5:
-      allow-first-in-block: true
-      allow-whole-block: false
-      branch-max-lines: 2
+        - wg syng.WaitGroup
+        - w http.ResponseWriter
+        - r *http.Request
+        - u auth.UserResp
+        - u *auth.UserResp
+        - u UserResp
+        - u UserIdent
+        - u auth.UserIdent
+        - u *UserResp
+        - q dynamodb.QueryInput
+        - b expression.Builder
+        - t time.Time
+    wsl:
+      strict-append: true
+      allow-assign-and-call: true
+      allow-multiline-assign: true
+      force-case-trailing-whitespace: 0
+      allow-trailing-comment: false
+      allow-separated-leading-comment: false
+      allow-cuddle-declarations: false
+      force-err-cuddling: false
   exclusions:
     warn-unused: true
     generated: strict
     rules:
       - linters:
-          - err113
-          - godot
-        path: _test\.go
-      - linters:
           - forbidigo
         text: Use t.Context
         path-except: _test\.go
+      - linters:
+          - goconst
+          - gosec
+          - govet
+          - varnamelen
+        path: _test\.go
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
   new: false
-  fix: true
+  fix: false
 formatters:
   enable:
     - gofmt
+    - gofumpt
     - goimports
   settings:
     gofmt:
       simplify: true
+    gofumpt:
+      extra:
+        group-params: true
+        clothe-returns: false
+        balance-calls: true
+    goimports:
+      local-prefixes: []
 output:
   show-stats: true

@@ -1,4 +1,4 @@
-package main
+package go3up
 
 import "sync"
 

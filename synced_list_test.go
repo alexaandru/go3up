@@ -1,4 +1,4 @@
-package main
+package go3up
 
 import (
 	"sort"
@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestSyncedListAdd(t *testing.T) {
+func TestAdd(t *testing.T) {
 	n, cl := 10, &syncedlist{}
 	expectedArr := make([]string, n)
 	wg := new(sync.WaitGroup)

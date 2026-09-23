@@ -1,0 +1,9 @@
+{
+  "WorkersCount": 16,
+  "BucketName": "config_bucket",
+  "Source": "output",
+  "CacheFile": ".go3up.txt",
+  "Region": "eu-west-1",
+  "Profile": "config-profile",
+  "Encrypt": true
+}
